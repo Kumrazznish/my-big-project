@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserButton, useUser } from '@clerk/clerk-react';
-import { Brain, History, BookOpen, User } from 'lucide-react';
+import { Brain, History, BookOpen, User, Menu, X, Sparkles, BarChart3, Settings, Bell } from 'lucide-react';
 
 interface NavigationProps {
   currentView: string;
@@ -9,59 +9,151 @@ interface NavigationProps {
 
 const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
   const { user } = useUser();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: 'dashboard', name: 'Dashboard', icon: BookOpen },
-    { id: 'history', name: 'History', icon: History },
+    { id: 'dashboard', name: 'Dashboard', icon: BookOpen, description: 'Your learning hub' },
+    { id: 'history', name: 'Progress', icon: History, description: 'Track your journey' },
+    { id: 'analytics', name: 'Analytics', icon: BarChart3, description: 'Performance insights' },
   ];
 
   return (
-    <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-8">
-            <div className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <Brain className="w-6 h-6 text-white" />
+        <div className="flex justify-between items-center h-20">
+          {/* Logo */}
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-2xl flex items-center justify-center">
+                <Brain className="w-7 h-7 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">LearnAI</span>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                <Sparkles className="w-2 h-2 text-white" />
+              </div>
             </div>
-            
-            <div className="hidden md:flex space-x-6">
+            <div>
+              <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                LearnAI Pro
+              </span>
+              <div className="text-xs text-cyan-400 font-medium">Next-Gen Learning</div>
+            </div>
+          </div>
+          
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex items-center space-x-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                  className={`group relative flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    currentView === item.id
+                      ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400'
+                      : 'text-gray-400 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <Icon size={20} className="group-hover:scale-110 transition-transform" />
+                  <div className="text-left">
+                    <div className="font-medium">{item.name}</div>
+                    <div className="text-xs opacity-75">{item.description}</div>
+                  </div>
+                  
+                  {currentView === item.id && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-xl"></div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right Side */}
+          <div className="flex items-center space-x-4">
+            {/* Notifications */}
+            <button className="relative p-2 text-gray-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all">
+              <Bell size={20} />
+              <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+            </button>
+
+            {/* Settings */}
+            <button className="p-2 text-gray-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all">
+              <Settings size={20} />
+            </button>
+
+            {/* User Info */}
+            <div className="hidden md:flex items-center space-x-3 bg-slate-800/50 rounded-xl px-4 py-2">
+              <div className="text-right">
+                <div className="text-sm font-medium text-white">
+                  {user?.firstName || 'User'}
+                </div>
+                <div className="text-xs text-gray-400">Pro Member</div>
+              </div>
+              <UserButton 
+                appearance={{
+                  elements: {
+                    avatarBox: "w-10 h-10 rounded-xl border-2 border-cyan-500/30"
+                  }
+                }}
+              />
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-gray-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-slate-700/50 py-4">
+            <div className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => onNavigate(item.id)}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+                    onClick={() => {
+                      onNavigate(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
                       currentView === item.id
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400'
+                        : 'text-gray-400 hover:text-white hover:bg-slate-800/50'
                     }`}
                   >
-                    <Icon size={18} />
-                    <span className="font-medium">{item.name}</span>
+                    <Icon size={20} />
+                    <div className="text-left">
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-xs opacity-75">{item.description}</div>
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-2 text-sm text-gray-600">
-              <User size={16} />
-              <span>Welcome, {user?.firstName || 'User'}</span>
+            
+            {/* Mobile User Info */}
+            <div className="mt-4 pt-4 border-t border-slate-700/50 flex items-center space-x-3">
+              <UserButton 
+                appearance={{
+                  elements: {
+                    avatarBox: "w-10 h-10 rounded-xl border-2 border-cyan-500/30"
+                  }
+                }}
+              />
+              <div>
+                <div className="text-sm font-medium text-white">
+                  {user?.firstName || 'User'}
+                </div>
+                <div className="text-xs text-gray-400">Pro Member</div>
+              </div>
             </div>
-            <UserButton 
-              appearance={{
-                elements: {
-                  avatarBox: "w-10 h-10"
-                }
-              }}
-            />
           </div>
-        </div>
+        )}
       </div>
     </nav>
   );
