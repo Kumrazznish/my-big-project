@@ -160,15 +160,37 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           currentChapter: `Generating content for: ${chapter.title}` 
         });
         
-        // Generate course content
-        const courseContent = await geminiService.generateCourseContent(
-          chapter.title, 
-          subject, 
-          difficulty
-        );
+        // Generate course content with error handling
+        let courseContent;
+        try {
+          courseContent = await geminiService.generateCourseContent(
+            chapter.title, 
+            subject, 
+            difficulty
+          );
+        } catch (contentError) {
+          console.error(`Failed to generate content for ${chapter.title}:`, contentError);
+          // Create fallback content
+          courseContent = {
+            title: chapter.title,
+            description: `Learn about ${chapter.title} in ${subject}`,
+            learningObjectives: [`Understand ${chapter.title}`, 'Apply concepts practically'],
+            estimatedTime: '4-6 hours',
+            content: {
+              introduction: `This chapter covers ${chapter.title} in ${subject}.`,
+              mainContent: `Detailed content for ${chapter.title} will be available soon.`,
+              keyPoints: [`Key concept 1`, `Key concept 2`],
+              summary: `Summary of ${chapter.title} concepts.`
+            },
+            codeExamples: [],
+            practicalExercises: [],
+            additionalResources: [],
+            nextSteps: []
+          };
+        }
         
-        // Shorter wait between requests since we have better rate limiting
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait between requests
+        await new Promise(resolve => setTimeout(resolve, 1500));
         
         // Update progress for quiz generation
         setGenerationProgress({ 
@@ -177,12 +199,28 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           currentChapter: `Generating quiz for: ${chapter.title}` 
         });
         
-        // Generate quiz
-        const quiz = await geminiService.generateQuiz(
-          chapter.title, 
-          subject, 
-          difficulty
-        );
+        // Generate quiz with error handling
+        let quiz;
+        try {
+          quiz = await geminiService.generateQuiz(
+            chapter.title, 
+            subject, 
+            difficulty
+          );
+        } catch (quizError) {
+          console.error(`Failed to generate quiz for ${chapter.title}:`, quizError);
+          // Create fallback quiz
+          quiz = {
+            chapterId: chapter.id,
+            title: `Quiz: ${chapter.title}`,
+            description: `Test your knowledge of ${chapter.title}`,
+            timeLimit: 600,
+            passingScore: 70,
+            questions: [],
+            totalQuestions: 0,
+            totalPoints: 0
+          };
+        }
         
         courseChapters.push({
           id: chapter.id,
@@ -194,7 +232,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         
         // Wait between chapters
         if (i < roadmap.chapters.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
       

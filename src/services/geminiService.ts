@@ -5,19 +5,24 @@ const API_KEYS = [
 
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-// Enhanced rate limiting with multiple API keys
+// Enhanced rate limiting with multiple API keys and stack overflow prevention
 class MultiKeyRateLimiter {
-  private keyUsage: Map<string, { requests: number[]; lastRequest: number }> = new Map();
+  private keyUsage: Map<string, { requests: number[]; lastRequest: number; consecutiveErrors: number }> = new Map();
   private currentKeyIndex = 0;
-  private readonly maxRequestsPerKey = 15; // More generous limit
+  private readonly maxRequestsPerKey = 20; // Increased limit
   private readonly timeWindow = 60000; // 1 minute
-  private readonly minInterval = 2000; // 2 seconds between requests (reduced)
+  private readonly minInterval = 1500; // 1.5 seconds between requests
+  private readonly maxConsecutiveErrors = 3; // Max errors before switching keys
 
   constructor() {
     // Initialize tracking for each API key
     API_KEYS.forEach(key => {
       if (key) {
-        this.keyUsage.set(key, { requests: [], lastRequest: 0 });
+        this.keyUsage.set(key, { 
+          requests: [], 
+          lastRequest: 0, 
+          consecutiveErrors: 0 
+        });
       }
     });
   }
@@ -40,7 +45,8 @@ class MultiKeyRateLimiter {
       
       // Check if this key can make a request
       const canUseKey = usage.requests.length < this.maxRequestsPerKey && 
-                       (now - usage.lastRequest) >= this.minInterval;
+                       (now - usage.lastRequest) >= this.minInterval &&
+                       usage.consecutiveErrors < this.maxConsecutiveErrors;
       
       if (canUseKey) {
         this.currentKeyIndex = keyIndex;
@@ -60,6 +66,20 @@ class MultiKeyRateLimiter {
     }
   }
 
+  recordError(apiKey: string): void {
+    const usage = this.keyUsage.get(apiKey);
+    if (usage) {
+      usage.consecutiveErrors++;
+    }
+  }
+
+  recordSuccess(apiKey: string): void {
+    const usage = this.keyUsage.get(apiKey);
+    if (usage) {
+      usage.consecutiveErrors = 0; // Reset error count on success
+    }
+  }
+
   getWaitTime(): number {
     const now = Date.now();
     let minWaitTime = Infinity;
@@ -67,6 +87,11 @@ class MultiKeyRateLimiter {
     API_KEYS.forEach(key => {
       const usage = this.keyUsage.get(key);
       if (!usage) return;
+
+      // Skip keys with too many consecutive errors
+      if (usage.consecutiveErrors >= this.maxConsecutiveErrors) {
+        return;
+      }
 
       // Check interval wait time
       const intervalWait = this.minInterval - (now - usage.lastRequest);
@@ -87,7 +112,7 @@ class MultiKeyRateLimiter {
       }
     });
 
-    return minWaitTime === Infinity ? 0 : minWaitTime;
+    return minWaitTime === Infinity ? 30000 : minWaitTime; // Default 30s wait if all keys exhausted
   }
 
   getRemainingRequests(): number {
@@ -96,7 +121,7 @@ class MultiKeyRateLimiter {
 
     API_KEYS.forEach(key => {
       const usage = this.keyUsage.get(key);
-      if (usage) {
+      if (usage && usage.consecutiveErrors < this.maxConsecutiveErrors) {
         usage.requests = usage.requests.filter(time => now - time < this.timeWindow);
         totalRemaining += Math.max(0, this.maxRequestsPerKey - usage.requests.length);
       }
@@ -114,21 +139,23 @@ class MultiKeyRateLimiter {
     waitTime: number; 
     requestsRemaining: number;
     activeKeys: number;
-    keyStatuses: Array<{ key: string; requests: number; available: boolean }>;
+    keyStatuses: Array<{ key: string; requests: number; available: boolean; errors: number }>;
   } {
     const now = Date.now();
     const keyStatuses = API_KEYS.map(key => {
       const usage = this.keyUsage.get(key);
-      if (!usage) return { key: key.slice(-8), requests: 0, available: false };
+      if (!usage) return { key: key.slice(-8), requests: 0, available: false, errors: 0 };
       
       usage.requests = usage.requests.filter(time => now - time < this.timeWindow);
       const available = usage.requests.length < this.maxRequestsPerKey && 
-                       (now - usage.lastRequest) >= this.minInterval;
+                       (now - usage.lastRequest) >= this.minInterval &&
+                       usage.consecutiveErrors < this.maxConsecutiveErrors;
       
       return {
         key: key.slice(-8), // Show last 8 characters for identification
         requests: usage.requests.length,
-        available
+        available,
+        errors: usage.consecutiveErrors
       };
     });
 
@@ -140,34 +167,33 @@ class MultiKeyRateLimiter {
       keyStatuses
     };
   }
+
+  // Reset all error counts (useful for recovery)
+  resetErrors(): void {
+    this.keyUsage.forEach(usage => {
+      usage.consecutiveErrors = 0;
+    });
+  }
 }
 
 const rateLimiter = new MultiKeyRateLimiter();
 
 export class GeminiService {
-  private async makeRequest(prompt: string, retryCount = 0): Promise<string> {
-    if (API_KEYS.length === 0) {
-      throw new Error('No Gemini API keys configured. Please add VITE_GEMINI_API_KEY and optionally VITE_GEMINI_API_KEY_2 to your .env file.');
-    }
-
-    const maxRetries = 5; // Increased retries
-    const baseDelay = 3000; // Reduced base delay
-
-    const availableKey = rateLimiter.getAvailableKey();
-    if (!availableKey) {
-      const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`All API keys are rate limited. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
-    }
-
+  private async makeRequestWithKey(prompt: string, apiKey: string, attempt: number = 1): Promise<string> {
+    const maxAttempts = 3;
+    
     try {
-      rateLimiter.recordRequest(availableKey);
-      console.log(`Making Gemini API request (attempt ${retryCount + 1}/${maxRetries + 1}) with key ending in ...${availableKey.slice(-8)}`);
+      console.log(`Making Gemini API request (attempt ${attempt}/${maxAttempts}) with key ending in ...${apiKey.slice(-8)}`);
 
-      const response = await fetch(`${API_URL}?key=${availableKey}`, {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      const response = await fetch(`${API_URL}?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           contents: [{
             parts: [{
@@ -201,46 +227,30 @@ export class GeminiService {
         })
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API Error ${response.status} with key ...${availableKey.slice(-8)}:`, errorText);
+        console.error(`API Error ${response.status} with key ...${apiKey.slice(-8)}:`, errorText);
+        
+        rateLimiter.recordError(apiKey);
         
         if (response.status === 429) {
-          if (retryCount < maxRetries) {
-            // Try with a different key if available
-            const nextKey = rateLimiter.getAvailableKey();
-            if (nextKey && nextKey !== availableKey) {
-              console.log(`Switching to different API key for retry...`);
-              return this.makeRequest(prompt, retryCount + 1);
-            }
-            
-            const delay = baseDelay * Math.pow(1.5, retryCount) + Math.random() * 2000;
-            console.log(`Rate limited. Retrying in ${Math.ceil(delay / 1000)}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return this.makeRequest(prompt, retryCount + 1);
-          } else {
-            throw new Error('Rate limit exceeded on all API keys. Please wait a few minutes and try again.');
-          }
+          throw new Error(`RATE_LIMIT:${apiKey}`);
         }
         
         if (response.status === 503 || response.status === 500) {
-          if (retryCount < maxRetries) {
-            const delay = baseDelay * Math.pow(1.5, retryCount) + Math.random() * 2000;
-            console.log(`Service error. Retrying in ${Math.ceil(delay / 1000)}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return this.makeRequest(prompt, retryCount + 1);
-          } else {
-            throw new Error('The AI service is currently experiencing issues. Please try again later.');
-          }
+          throw new Error(`SERVICE_ERROR:${apiKey}`);
         }
         
+        // Try to parse error message
         try {
           const errorData = JSON.parse(errorText);
           if (errorData.error && errorData.error.message) {
             if (errorData.error.message.includes('quota') || errorData.error.message.includes('limit')) {
-              throw new Error('API quota exceeded. Please wait before trying again.');
+              throw new Error(`QUOTA_EXCEEDED:${apiKey}`);
             }
-            throw new Error(`API Error: ${errorData.error.message}`);
+            throw new Error(`API_ERROR:${errorData.error.message}`);
           }
         } catch (parseError) {
           // Continue with generic error handling
@@ -248,42 +258,111 @@ export class GeminiService {
         
         switch (response.status) {
           case 400:
-            throw new Error('Invalid request format. Please try again.');
+            throw new Error('INVALID_REQUEST:Invalid request format');
           case 401:
-            throw new Error('API authentication failed. Please check your API key.');
+            throw new Error(`AUTH_FAILED:${apiKey}`);
           case 403:
-            throw new Error('Access forbidden. Please check your API permissions.');
+            throw new Error(`ACCESS_FORBIDDEN:${apiKey}`);
           default:
-            throw new Error(`Service temporarily unavailable (${response.status}). Please try again later.`);
+            throw new Error(`SERVICE_UNAVAILABLE:${response.status}`);
         }
       }
 
       const data = await response.json();
       
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response structure from AI service.');
+        throw new Error('INVALID_RESPONSE:Invalid response structure from AI service');
       }
 
       const content = data.candidates[0].content;
       if (!content.parts || !content.parts[0] || !content.parts[0].text) {
-        throw new Error('No content received from AI service.');
+        throw new Error('NO_CONTENT:No content received from AI service');
       }
 
-      console.log(`Successfully received response from Gemini API using key ...${availableKey.slice(-8)}`);
+      rateLimiter.recordSuccess(apiKey);
+      console.log(`Successfully received response from Gemini API using key ...${apiKey.slice(-8)}`);
       return content.parts[0].text;
+
     } catch (error) {
       if (error instanceof Error) {
-        console.error('Gemini API Error:', error.message);
+        const errorMessage = error.message;
+        
+        // Handle specific error types
+        if (errorMessage.startsWith('RATE_LIMIT:') || 
+            errorMessage.startsWith('SERVICE_ERROR:') || 
+            errorMessage.startsWith('QUOTA_EXCEEDED:')) {
+          
+          if (attempt < maxAttempts) {
+            const delay = 2000 * attempt + Math.random() * 1000;
+            console.log(`Retrying request in ${delay}ms due to: ${errorMessage.split(':')[0]}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.makeRequestWithKey(prompt, apiKey, attempt + 1);
+          }
+        }
+        
         throw error;
       } else {
-        console.error('Unknown Gemini API Error:', error);
-        throw new Error('An unexpected error occurred while communicating with the AI service.');
+        throw new Error('UNKNOWN_ERROR:An unexpected error occurred');
       }
     }
   }
 
   async makeRequest(prompt: string): Promise<string> {
-    return this.makeRequest(prompt, 0);
+    if (API_KEYS.length === 0) {
+      throw new Error('No Gemini API keys configured. Please add VITE_GEMINI_API_KEY and optionally VITE_GEMINI_API_KEY_2 to your .env file.');
+    }
+
+    const maxKeyAttempts = API_KEYS.length * 2; // Try each key twice
+    let keyAttempt = 0;
+    let lastError: Error | null = null;
+
+    while (keyAttempt < maxKeyAttempts) {
+      const availableKey = rateLimiter.getAvailableKey();
+      
+      if (!availableKey) {
+        const waitTime = rateLimiter.getWaitTime();
+        
+        // If wait time is reasonable, wait and retry
+        if (waitTime < 60000) { // Less than 1 minute
+          console.log(`All keys busy, waiting ${Math.ceil(waitTime / 1000)}s...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        } else {
+          // Reset errors and try again if wait time is too long
+          if (keyAttempt === 0) {
+            console.log('Resetting error counts and retrying...');
+            rateLimiter.resetErrors();
+            keyAttempt++;
+            continue;
+          } else {
+            throw new Error(`All API keys are exhausted. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+          }
+        }
+      }
+
+      try {
+        rateLimiter.recordRequest(availableKey);
+        const result = await this.makeRequestWithKey(prompt, availableKey);
+        return result;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        console.error(`Request failed with key ...${availableKey.slice(-8)}:`, lastError.message);
+        
+        keyAttempt++;
+        
+        // If it's a non-recoverable error, don't retry with other keys
+        if (lastError.message.includes('INVALID_REQUEST') || 
+            lastError.message.includes('AUTH_FAILED')) {
+          throw lastError;
+        }
+        
+        // Wait a bit before trying next key
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    // If we've exhausted all attempts
+    throw lastError || new Error('All API key attempts failed');
   }
 
   private cleanJsonResponse(response: string): string {
@@ -364,11 +443,6 @@ export class GeminiService {
   async generateRoadmap(subject: string, difficulty: string): Promise<any> {
     console.log('Generating roadmap for:', { subject, difficulty });
     
-    if (!rateLimiter.canMakeRequest()) {
-      const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`All API keys are rate limited. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
-    }
-
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
     const prompt = `Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level.
@@ -439,35 +513,29 @@ Return ONLY the JSON object.`;
   }
 
   async generateCourseContent(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
-    if (!rateLimiter.canMakeRequest()) {
-      const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`All API keys are rate limited. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
-    }
-
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
     // Get a proper YouTube video ID for the subject and chapter
     const getYouTubeVideoId = (subject: string, chapter: string): string => {
       // Map common subjects to actual educational video IDs
       const videoMappings: { [key: string]: string } = {
-        'programming': 'rfscVS0vtbw', // Learn Programming in 10 Minutes
-        'web-development': 'UB1O30fR-EE', // HTML, CSS, JS Explained
-        'javascript': 'PkZNo7MFNFg', // Learn JavaScript
-        'python': 'kqtD5dpn9C8', // Python for Beginners
-        'react': 'Ke90Tje7VS0', // React Tutorial
-        'data-science': 'ua-CiDNNj30', // Data Science Explained
-        'machine-learning': 'ukzFI9rgwfU', // Machine Learning Explained
-        'design': 'YiLUYf4HDh4', // UI/UX Design
-        'mathematics': 'WUvTyaaNkzM', // Mathematics Explained
-        'business': 'SlteusaKev4' // Business Strategy
+        'programming': 'rfscVS0vtbw',
+        'web-development': 'UB1O30fR-EE',
+        'javascript': 'PkZNo7MFNFg',
+        'python': 'kqtD5dpn9C8',
+        'react': 'Ke90Tje7VS0',
+        'data-science': 'ua-CiDNNj30',
+        'machine-learning': 'ukzFI9rgwfU',
+        'design': 'YiLUYf4HDh4',
+        'mathematics': 'WUvTyaaNkzM',
+        'business': 'SlteusaKev4'
       };
       
-      // Find the best match for the subject
       const subjectKey = Object.keys(videoMappings).find(key => 
         subject.toLowerCase().includes(key) || chapter.toLowerCase().includes(key)
       );
       
-      return videoMappings[subjectKey] || 'dQw4w9WgXcQ'; // Default fallback
+      return videoMappings[subjectKey] || 'dQw4w9WgXcQ';
     };
 
     const videoId = getYouTubeVideoId(subject, chapterTitle);
@@ -566,11 +634,6 @@ Return ONLY the JSON object.`;
   }
 
   async generateQuiz(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
-    if (!rateLimiter.canMakeRequest()) {
-      const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`All API keys are rate limited. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
-    }
-
     const prompt = `Create a comprehensive quiz for "${chapterTitle}" in ${subject} at ${difficulty} level.
 
 Return ONLY valid JSON:
@@ -640,7 +703,7 @@ Return ONLY the JSON object.`;
     waitTime: number; 
     requestsRemaining: number;
     activeKeys: number;
-    keyStatuses: Array<{ key: string; requests: number; available: boolean }>;
+    keyStatuses: Array<{ key: string; requests: number; available: boolean; errors: number }>;
   } {
     return rateLimiter.getStatus();
   }

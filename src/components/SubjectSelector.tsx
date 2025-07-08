@@ -193,9 +193,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
   const [rateLimitStatus, setRateLimitStatus] = useState({ 
     canMakeRequest: true, 
     waitTime: 0, 
-    requestsRemaining: 30,
+    requestsRemaining: 40,
     activeKeys: 0,
-    keyStatuses: []
+    keyStatuses: [] as Array<{ key: string; requests: number; available: boolean; errors: number }>
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -222,12 +222,6 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
 
   const handleSubmit = () => {
     if (selectedSubject && selectedDifficulty && selectedLearningStyle && selectedTimeCommitment && selectedGoals.length > 0) {
-      // Check rate limit before proceeding
-      if (!rateLimitStatus.canMakeRequest) {
-        alert(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before generating your roadmap.`);
-        return;
-      }
-      
       console.log('Submitting subject selection:', {
         selectedSubject,
         selectedDifficulty,
@@ -736,13 +730,22 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
           <div className={`mt-4 text-center text-sm transition-colors ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
           }`}>
-            <div className="flex items-center justify-center space-x-4">
+            <div className="flex items-center justify-center space-x-4 flex-wrap gap-2">
               <span>API Keys: {rateLimitStatus.activeKeys}</span>
               <span>Requests Available: {rateLimitStatus.requestsRemaining}</span>
               {!rateLimitStatus.canMakeRequest && (
                 <span className="text-orange-500">
                   Wait: {Math.ceil(rateLimitStatus.waitTime / 1000)}s
                 </span>
+              )}
+              {rateLimitStatus.keyStatuses.length > 0 && (
+                <div className="text-xs">
+                  Keys: {rateLimitStatus.keyStatuses.map((status, i) => (
+                    <span key={i} className={status.available ? 'text-green-500' : 'text-red-500'}>
+                      {status.key}({status.requests}/{status.errors})
+                    </span>
+                  )).reduce((prev, curr, i) => [prev, i > 0 ? ', ' : '', curr])}
+                </div>
               )}
             </div>
           </div>
