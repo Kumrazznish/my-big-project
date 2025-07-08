@@ -4,20 +4,27 @@ const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-
 // Enhanced rate limiting configuration
 class RateLimiter {
   private requests: number[] = [];
-  private readonly maxRequests = 8; // Conservative limit
-  private readonly timeWindow = 60000; // 1 minute
+  // maxRequests: The maximum number of requests allowed within the timeWindow.
+  // The Gemini API has a default rate limit of 60 requests per minute (RPM).
+  // Setting this lower than 60 provides a buffer.
+  private readonly maxRequests = 20; // Reduced from 8 to 20 per minute (conservative for 60 RPM)
+  // timeWindow: The duration in milliseconds over which maxRequests is enforced.
+  private readonly timeWindow = 60000; // 1 minute (60 seconds)
   private lastRequestTime = 0;
-  private readonly minInterval = 4000; // 4 seconds between requests
+  // minInterval: The minimum time (in milliseconds) that must pass between consecutive requests.
+  // This helps prevent bursts of requests. If you have 20 RPM, then 60000ms / 20 requests = 3000ms per request.
+  // Setting it higher provides more buffer.
+  private readonly minInterval = 3000; // 3 seconds between requests (increased from 4 seconds for better pacing)
 
   canMakeRequest(): boolean {
     const now = Date.now();
-    
-    // Check minimum interval
+
+    // Check minimum interval first
     if (now - this.lastRequestTime < this.minInterval) {
       return false;
     }
-    
-    // Clean old requests
+
+    // Clean old requests that are outside the time window
     this.requests = this.requests.filter(time => now - time < this.timeWindow);
     return this.requests.length < this.maxRequests;
   }
@@ -31,10 +38,13 @@ class RateLimiter {
   getWaitTime(): number {
     const now = Date.now();
     const intervalWait = this.minInterval - (now - this.lastRequestTime);
-    
+
     if (intervalWait > 0) return intervalWait;
-    
-    if (this.requests.length === 0) return 0;
+
+    // If there are no requests or we are within the maxRequests, no wait for rate limit
+    if (this.requests.length === 0 || this.requests.length < this.maxRequests) return 0;
+
+    // Calculate wait time based on the oldest request to stay within maxRequests per timeWindow
     const oldestRequest = Math.min(...this.requests);
     const rateLimitWait = this.timeWindow - (now - oldestRequest);
     return Math.max(0, rateLimitWait);
@@ -56,15 +66,25 @@ export class GeminiService {
     }
 
     const maxRetries = 3;
-    const baseDelay = 6000;
+    const baseDelay = 6000; // Base delay for retries (6 seconds)
 
+    // Check rate limit BEFORE making the request
     if (!rateLimiter.canMakeRequest()) {
       const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+      // If a retry is happening, it means the previous attempt also failed due to rate limit or other issues.
+      // We should honor the rate limiter's wait time more strictly here.
+      if (waitTime > 0) {
+        console.warn(`Rate limit active. Waiting ${Math.ceil(waitTime / 1000)} seconds before retrying.`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      } else {
+        // This case should ideally not be hit if canMakeRequest is false and waitTime is 0,
+        // but as a fallback, throw an error to prevent immediate re-attempts without delay.
+        throw new Error(`Rate limit exceeded. Please wait a few moments and try again.`);
+      }
     }
 
     try {
-      rateLimiter.recordRequest();
+      rateLimiter.recordRequest(); // Record the request BEFORE sending it
       console.log(`Making Gemini API request (attempt ${retryCount + 1}/${maxRetries + 1})`);
 
       const response = await fetch(`${API_URL}?key=${API_KEY}`, {
@@ -108,29 +128,32 @@ export class GeminiService {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`API Error ${response.status}:`, errorText);
-        
-        if (response.status === 429) {
+
+        if (response.status === 429) { // Too Many Requests
           if (retryCount < maxRetries) {
+            // Exponential backoff with jitter for 429 errors
             const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 3000;
-            console.log(`Rate limited. Retrying in ${Math.ceil(delay / 1000)}s...`);
+            console.log(`Rate limited (429). Retrying in ${Math.ceil(delay / 1000)}s...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return this.makeRequest(prompt, retryCount + 1);
           } else {
             throw new Error('Rate limit exceeded. Please wait a few minutes and try again.');
           }
         }
-        
-        if (response.status === 503 || response.status === 500) {
+
+        if (response.status === 503 || response.status === 500) { // Service Unavailable or Internal Server Error
           if (retryCount < maxRetries) {
+            // Exponential backoff with jitter for server errors
             const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 4000;
-            console.log(`Service error. Retrying in ${Math.ceil(delay / 1000)}s...`);
+            console.log(`Service error (${response.status}). Retrying in ${Math.ceil(delay / 1000)}s...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return this.makeRequest(prompt, retryCount + 1);
           } else {
             throw new Error('The AI service is currently experiencing issues. Please try again later.');
           }
         }
-        
+
+        // Try to parse error message for more specific issues like quota
         try {
           const errorData = JSON.parse(errorText);
           if (errorData.error && errorData.error.message) {
@@ -140,9 +163,10 @@ export class GeminiService {
             throw new Error(`API Error: ${errorData.error.message}`);
           }
         } catch (parseError) {
-          // Continue with generic error handling
+          // If JSON parsing fails, continue with generic error handling
         }
-        
+
+        // Generic error handling for other HTTP status codes
         switch (response.status) {
           case 400:
             throw new Error('Invalid request format. Please try again.');
@@ -156,16 +180,14 @@ export class GeminiService {
       }
 
       const data = await response.json();
-      
+
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
         throw new Error('Invalid response structure from AI service.');
       }
-
       const content = data.candidates[0].content;
       if (!content.parts || !content.parts[0] || !content.parts[0].text) {
         throw new Error('No content received from AI service.');
       }
-
       console.log('Successfully received response from Gemini API');
       return content.parts[0].text;
     } catch (error) {
@@ -179,146 +201,20 @@ export class GeminiService {
     }
   }
 
-  async makeRequest(prompt: string, retryCount = 0): Promise<string> {
-    if (!API_KEY) {
-      throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
-    }
-
-    const maxRetries = 3;
-    const baseDelay = 6000;
-
-    if (!rateLimiter.canMakeRequest()) {
-      const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
-    }
-
-    try {
-      rateLimiter.recordRequest();
-      console.log(`Making Gemini API request (attempt ${retryCount + 1}/${maxRetries + 1})`);
-
-      const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 8192,
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API Error ${response.status}:`, errorText);
-        
-        if (response.status === 429) {
-          if (retryCount < maxRetries) {
-            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 3000;
-            console.log(`Rate limited. Retrying in ${Math.ceil(delay / 1000)}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return this.makeRequest(prompt, retryCount + 1);
-          } else {
-            throw new Error('Rate limit exceeded. Please wait a few minutes and try again.');
-          }
-        }
-        
-        if (response.status === 503 || response.status === 500) {
-          if (retryCount < maxRetries) {
-            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 4000;
-            console.log(`Service error. Retrying in ${Math.ceil(delay / 1000)}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            return this.makeRequest(prompt, retryCount + 1);
-          } else {
-            throw new Error('The AI service is currently experiencing issues. Please try again later.');
-          }
-        }
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData.error && errorData.error.message) {
-            if (errorData.error.message.includes('quota') || errorData.error.message.includes('limit')) {
-              throw new Error('API quota exceeded. Please wait before trying again.');
-            }
-            throw new Error(`API Error: ${errorData.error.message}`);
-          }
-        } catch (parseError) {
-          // Continue with generic error handling
-        }
-        
-        switch (response.status) {
-          case 400:
-            throw new Error('Invalid request format. Please try again.');
-          case 401:
-            throw new Error('API authentication failed. Please check your API key.');
-          case 403:
-            throw new Error('Access forbidden. Please check your API permissions.');
-          default:
-            throw new Error(`Service temporarily unavailable (${response.status}). Please try again later.`);
-        }
-      }
-
-      const data = await response.json();
-      
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response structure from AI service.');
-      }
-
-      const content = data.candidates[0].content;
-      if (!content.parts || !content.parts[0] || !content.parts[0].text) {
-        throw new Error('No content received from AI service.');
-      }
-
-      console.log('Successfully received response from Gemini API');
-      return content.parts[0].text;
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Gemini API Error:', error.message);
-        throw error;
-      } else {
-        console.error('Unknown Gemini API Error:', error);
-        throw new Error('An unexpected error occurred while communicating with the AI service.');
-      }
-    }
-  }
+  // The second `makeRequest` method was a duplicate and has been removed.
+  // All calls to `this.makeRequest` will now correctly use the single, private method.
 
   private cleanJsonResponse(response: string): string {
     let cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     cleaned = cleaned.trim();
-    
+
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
-    
+
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
     }
-    
+
     return cleaned.trim();
   }
 
@@ -332,7 +228,7 @@ export class GeminiService {
       data.chapters &&
       Array.isArray(data.chapters) &&
       data.chapters.length > 0 &&
-      data.chapters.every((chapter: any) => 
+      data.chapters.every((chapter: any) =>
         chapter.id &&
         chapter.title &&
         chapter.description &&
@@ -368,7 +264,7 @@ export class GeminiService {
       data.questions &&
       Array.isArray(data.questions) &&
       data.questions.length > 0 &&
-      data.questions.every((question: any) => 
+      data.questions.every((question: any) =>
         question.id &&
         question.question &&
         Array.isArray(question.options) &&
@@ -385,23 +281,22 @@ export class GeminiService {
 
   async generateRoadmap(subject: string, difficulty: string): Promise<any> {
     console.log('Generating roadmap for:', { subject, difficulty });
-    
+
+    // The rate limit check is already inside makeRequest, but an explicit check here
+    // can provide earlier feedback to the user before even constructing the prompt.
     if (!rateLimiter.canMakeRequest()) {
       const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
+      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
     }
 
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
-    
-    const prompt = `Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level.
 
+    const prompt = `Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level.
 Learning preferences:
 - Style: ${preferences.learningStyle || 'mixed'}
 - Time: ${preferences.timeCommitment || 'regular'}
 - Goals: ${preferences.goals?.join(', ') || 'general learning'}
-
 Return ONLY valid JSON in this exact format:
-
 {
   "subject": "${subject}",
   "difficulty": "${difficulty}",
@@ -432,7 +327,6 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }
-
 Requirements:
 - Create exactly 10-12 chapters
 - Alternate position: "left", "right"
@@ -440,19 +334,17 @@ Requirements:
 - Realistic time estimates
 - Relevant content for ${subject}
 - All chapters completed: false
-
 Return ONLY the JSON object.`;
-
     const response = await this.makeRequest(prompt);
-    
+
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
       const parsedData = JSON.parse(cleanedResponse);
-      
+
       if (!this.validateRoadmapData(parsedData)) {
         throw new Error('Invalid roadmap data structure received.');
       }
-      
+
       return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
@@ -461,13 +353,14 @@ Return ONLY the JSON object.`;
   }
 
   async generateCourseContent(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
+    // The rate limit check is already inside makeRequest, but an explicit check here
+    // can provide earlier feedback to the user before even constructing the prompt.
     if (!rateLimiter.canMakeRequest()) {
       const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
+      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
     }
-
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
-    
+
     // Get a proper YouTube video ID for the subject and chapter
     const getYouTubeVideoId = (subject: string, chapter: string): string => {
       // Map common subjects to actual educational video IDs
@@ -483,21 +376,18 @@ Return ONLY the JSON object.`;
         'mathematics': 'WUvTyaaNkzM', // Mathematics Explained
         'business': 'SlteusaKev4' // Business Strategy
       };
-      
+
       // Find the best match for the subject
-      const subjectKey = Object.keys(videoMappings).find(key => 
+      const subjectKey = Object.keys(videoMappings).find(key =>
         subject.toLowerCase().includes(key) || chapter.toLowerCase().includes(key)
       );
-      
+
       return videoMappings[subjectKey] || 'dQw4w9WgXcQ'; // Default fallback
     };
-
     const videoId = getYouTubeVideoId(subject, chapterTitle);
-    
+
     const prompt = `Create comprehensive course content for "${chapterTitle}" in ${subject} at ${difficulty} level.
-
 Return ONLY valid JSON:
-
 {
   "title": "${chapterTitle}",
   "description": "Comprehensive guide to ${chapterTitle} in ${subject}",
@@ -566,20 +456,18 @@ Return ONLY valid JSON:
     "Apply concepts in your own projects"
   ]
 }
-
 Make content specific to ${subject} and appropriate for ${difficulty} level.
 Return ONLY the JSON object.`;
-
     const response = await this.makeRequest(prompt);
-    
+
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
       const parsedData = JSON.parse(cleanedResponse);
-      
+
       if (!this.validateCourseContent(parsedData)) {
         throw new Error('Invalid course content structure received.');
       }
-      
+
       return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
@@ -588,15 +476,14 @@ Return ONLY the JSON object.`;
   }
 
   async generateQuiz(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
+    // The rate limit check is already inside makeRequest, but an explicit check here
+    // can provide earlier feedback to the user before even constructing the prompt.
     if (!rateLimiter.canMakeRequest()) {
       const waitTime = rateLimiter.getWaitTime();
-      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds.`);
+      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
     }
-
     const prompt = `Create a comprehensive quiz for "${chapterTitle}" in ${subject} at ${difficulty} level.
-
 Return ONLY valid JSON:
-
 {
   "chapterId": "chapter-quiz",
   "title": "Quiz: ${chapterTitle}",
@@ -623,7 +510,6 @@ Return ONLY valid JSON:
   "totalQuestions": 10,
   "totalPoints": 100
 }
-
 Requirements:
 - Exactly 10 questions
 - Mix of difficulties: 3 easy, 4 medium, 3 hard
@@ -633,23 +519,21 @@ Requirements:
 - Detailed explanations
 - Content specific to ${chapterTitle} and ${subject}
 - Appropriate for ${difficulty} level
-
 Return ONLY the JSON object.`;
-
     const response = await this.makeRequest(prompt);
-    
+
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
       const parsedData = JSON.parse(cleanedResponse);
-      
+
       if (!this.validateQuizData(parsedData)) {
         throw new Error('Invalid quiz data structure received.');
       }
-      
+
       if (parsedData.questions.length !== 10) {
         throw new Error('Quiz must contain exactly 10 questions.');
       }
-      
+
       return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
@@ -661,7 +545,7 @@ Return ONLY the JSON object.`;
     const canMakeRequest = rateLimiter.canMakeRequest();
     const waitTime = rateLimiter.getWaitTime();
     const requestsRemaining = rateLimiter.getRemainingRequests();
-    
+
     return {
       canMakeRequest,
       waitTime,
