@@ -42,28 +42,7 @@ const AppContent: React.FC = () => {
       goals
     }));
     
-    // Create learning history entry
-    if (user) {
-      try {
-        const roadmapId = `roadmap_${Date.now()}`;
-        setCurrentRoadmapId(roadmapId);
-        
-        await userService.addToHistory(user._id, {
-          subject,
-          difficulty,
-          roadmapId,
-          chapterProgress: [], // Will be populated when roadmap is generated
-          learningPreferences: {
-            learningStyle,
-            timeCommitment,
-            goals
-          }
-        });
-      } catch (error) {
-        console.error('Failed to create learning history:', error);
-      }
-    }
-    
+    // Create learning history entry will be handled in RoadmapView
     setCurrentState('roadmap');
   };
 
@@ -99,6 +78,9 @@ const AppContent: React.FC = () => {
         console.error('Failed to update chapter progress:', error);
       }
     }
+    
+    // Go back to chapter details after quiz completion
+    setCurrentState('chapter');
   };
 
   const handleBackToSelection = () => {

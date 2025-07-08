@@ -285,6 +285,13 @@ Return ONLY the JSON object, no additional text or formatting.`;
   async generateCourseContent(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
+    // Generate a realistic YouTube search query and create a proper URL
+    const generateYouTubeUrl = (topic: string, subject: string) => {
+      const searchQuery = `${topic} ${subject} tutorial ${difficulty}`.replace(/\s+/g, '+');
+      // For demo purposes, we'll use a search URL that users can click to find relevant videos
+      return `https://www.youtube.com/results?search_query=${searchQuery}`;
+    };
+    
     const prompt = `Create comprehensive course content for "${chapterTitle}" in ${subject} at ${difficulty} level.
 Learning preferences: ${preferences.learningStyle || 'mixed'} style, ${preferences.timeCommitment || 'regular'} commitment.
 
@@ -312,16 +319,16 @@ Please respond with ONLY a valid JSON object in this exact format:
     ],
     "summary": "In this chapter, we covered the essential aspects of ${chapterTitle} in ${subject}. You learned about the core concepts, saw practical examples, and understand how to apply this knowledge. The key takeaways include understanding the fundamentals, recognizing patterns, and being able to implement these concepts in your own projects."
   },
-  "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "videoUrl": "${generateYouTubeUrl(chapterTitle, subject)}",
   "codeExamples": [
     {
       "title": "Basic Example: ${chapterTitle}",
-      "code": "// Example code demonstrating ${chapterTitle} concepts\n// This is a practical example for ${difficulty} level\nconsole.log('Hello, ${subject}!');",
+      "code": "// Example code demonstrating ${chapterTitle} concepts\\n// This is a practical example for ${difficulty} level\\nconsole.log('Hello, ${subject}!');",
       "explanation": "This example demonstrates the basic concepts of ${chapterTitle}. It shows how to implement the fundamental principles we discussed in a practical way."
     },
     {
       "title": "Advanced Example: ${chapterTitle} in Practice",
-      "code": "// More advanced example showing real-world usage\n// Suitable for ${difficulty} level learners\nfunction example() {\n  return 'Advanced ${chapterTitle} example';\n}",
+      "code": "// More advanced example showing real-world usage\\n// Suitable for ${difficulty} level learners\\nfunction example() {\\n  return 'Advanced ${chapterTitle} example';\\n}",
       "explanation": "This advanced example shows how ${chapterTitle} is used in real-world scenarios. It demonstrates best practices and common patterns."
     }
   ],
@@ -340,13 +347,13 @@ Please respond with ONLY a valid JSON object in this exact format:
   "additionalResources": [
     {
       "title": "Official ${subject} Documentation",
-      "url": "https://example.com/docs",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/${subject}",
       "type": "documentation",
       "description": "Official documentation covering ${chapterTitle} concepts"
     },
     {
       "title": "Tutorial: ${chapterTitle} Deep Dive",
-      "url": "https://example.com/tutorial",
+      "url": "https://www.freecodecamp.org/news/search?query=${chapterTitle.replace(/\s+/g, '-').toLowerCase()}",
       "type": "tutorial",
       "description": "Comprehensive tutorial on ${chapterTitle} with examples"
     }
@@ -365,8 +372,8 @@ IMPORTANT REQUIREMENTS:
 3. Include realistic and educational code examples
 4. Make the mainContent substantial (at least 500 words)
 5. Include practical exercises that reinforce learning
-6. Provide relevant additional resources
-7. Use a real YouTube URL if possible, otherwise use placeholder
+6. Provide relevant additional resources with real URLs
+7. Use YouTube search URLs for video content
 8. Make learning objectives specific and measurable
 
 Return ONLY the JSON object, no additional text or formatting.`;

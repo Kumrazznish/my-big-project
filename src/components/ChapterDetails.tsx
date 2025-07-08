@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { geminiService } from '../services/geminiService';
-import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle } from 'lucide-react';
+import { userService } from '../services/userService';
+import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle, Brain } from 'lucide-react';
 
 interface Chapter {
   id: string;
@@ -9,6 +11,8 @@ interface Chapter {
   description: string;
   duration: string;
   completed: boolean;
+  courseContent?: any;
+  quiz?: any;
 }
 
 interface CourseContent {
@@ -52,6 +56,7 @@ interface ChapterDetailsProps {
 
 const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, difficulty, onBack, onQuizStart }) => {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [courseContent, setCourseContent] = useState<CourseContent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +68,14 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
   const maxRetries = 3;
 
   useEffect(() => {
-    generateCourseContent();
+    if (chapter.courseContent) {
+      // Use pre-generated content if available
+      setCourseContent(chapter.courseContent);
+      setLoading(false);
+    } else {
+      // Generate content on demand
+      generateCourseContent();
+    }
   }, [chapter.id, subject, difficulty]);
 
   const generateCourseContent = async () => {
@@ -89,8 +101,29 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
     }
   };
 
-  const handleMarkComplete = () => {
+  const handleMarkComplete = async () => {
     setIsCompleted(true);
+    
+    // Update progress in database if user is logged in
+    if (user) {
+      try {
+        const history = await userService.getUserHistory(user._id);
+        const currentHistory = history.find(h => 
+          h.chapterProgress.some(cp => cp.chapterId === chapter.id)
+        );
+        
+        if (currentHistory) {
+          await userService.updateChapterProgress(
+            user._id,
+            currentHistory._id,
+            chapter.id,
+            true
+          );
+        }
+      } catch (error) {
+        console.error('Failed to update chapter progress:', error);
+      }
+    }
   };
 
   const copyToClipboard = async (code: string, title: string) => {
@@ -123,13 +156,31 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
   };
 
   const extractVideoId = (url: string) => {
-    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
+    if (!url) return null;
+    
+    // Handle various YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    return null;
   };
 
   const isValidYouTubeUrl = (url: string) => {
+    if (!url) return false;
     return extractVideoId(url) !== null;
+  };
+
+  const getYouTubeEmbedUrl = (videoId: string) => {
+    return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0&controls=1&autoplay=0`;
   };
 
   if (loading) {
@@ -151,12 +202,12 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
               <h3 className={`text-2xl font-bold mb-2 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
-                Generating Course Content
+                Loading Course Content
               </h3>
               <p className={`transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                AI is creating comprehensive learning materials for {chapter.title}...
+                Preparing comprehensive learning materials for {chapter.title}...
               </p>
             </div>
           </div>
@@ -184,7 +235,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
             <h3 className={`text-xl font-bold mb-4 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              Content Generation Failed
+              Content Loading Failed
             </h3>
             <p className={`mb-6 transition-colors ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
@@ -220,7 +271,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
   if (!courseContent) return null;
 
   const videoId = courseContent.videoUrl ? extractVideoId(courseContent.videoUrl) : null;
-  const hasValidVideo = courseContent.videoUrl && isValidYouTubeUrl(courseContent.videoUrl);
+  const hasValidVideo = videoId !== null;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -290,13 +341,15 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                   <span>Mark Complete</span>
                 </button>
               )}
-              <button
-                onClick={() => onQuizStart(chapter)}
-                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold flex items-center space-x-2"
-              >
-                <Award className="w-5 h-5" />
-                <span>Take Quiz</span>
-              </button>
+              {chapter.quiz && (
+                <button
+                  onClick={() => onQuizStart(chapter)}
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold flex items-center space-x-2"
+                >
+                  <Award className="w-5 h-5" />
+                  <span>Take Quiz</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -346,13 +399,14 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
               <Youtube className="w-6 h-6 mr-3 text-red-500" />
               Video Lesson
             </h2>
-            <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl">
+            <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
               {!videoError ? (
                 <iframe
-                  src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
+                  src={getYouTubeEmbedUrl(videoId)}
                   title={courseContent.title}
                   className="w-full h-full"
                   allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   onError={() => setVideoError(true)}
                 />
               ) : (
@@ -361,7 +415,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                 }`}>
                   <div className="text-center">
                     <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className={`transition-colors ${
+                    <p className={`mb-4 transition-colors ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                     }`}>
                       Video could not be loaded
@@ -370,9 +424,9 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                       href={courseContent.videoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 mt-4 text-cyan-500 hover:text-cyan-600 transition-colors"
+                      className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <Youtube className="w-4 h-4" />
                       <span>Watch on YouTube</span>
                     </a>
                   </div>
@@ -420,9 +474,11 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
               <div className={`prose max-w-none transition-colors ${
                 theme === 'dark' ? 'prose-invert' : ''
               }`}>
-                <p className="text-lg leading-relaxed whitespace-pre-line">
+                <div className={`text-lg leading-relaxed whitespace-pre-line transition-colors ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                }`}>
                   {courseContent.content.mainContent}
-                </p>
+                </div>
               </div>
             </div>
 
@@ -516,9 +572,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                       )}
                     </button>
                   </div>
-                  <div className={`p-6 transition-colors ${
-                    theme === 'dark' ? 'bg-slate-900/50' : 'bg-gray-900'
-                  }`}>
+                  <div className="bg-gray-900 p-6">
                     <pre className="text-green-400 text-sm overflow-x-auto">
                       <code>{example.code}</code>
                     </pre>

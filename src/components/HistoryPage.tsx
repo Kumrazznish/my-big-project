@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
 import { LearningHistory } from '../types';
-import { Clock, BookOpen, Award, TrendingUp, Calendar, Filter, Play, Target, Users, Star, ChevronRight, BarChart3, Trophy, Zap, Brain, Code, Palette, Calculator, Globe } from 'lucide-react';
+import { Clock, BookOpen, Award, TrendingUp, Calendar, Filter, Play, Target, Users, Star, ChevronRight, BarChart3, Trophy, Zap, Brain, Code, Palette, Calculator, Globe, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface HistoryPageProps {
   onContinueLearning: (subject: string, difficulty: string, roadmapId: string) => void;
@@ -14,7 +14,11 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
   const { user } = useAuth();
   const [history, setHistory] = useState<LearningHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'completed' | 'in-progress' | 'recent'>('all');
+  const [retryCount, setRetryCount] = useState(0);
+
+  const maxRetries = 3;
 
   useEffect(() => {
     if (user) {
@@ -25,13 +29,25 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
   const loadHistory = async () => {
     if (!user) return;
     
+    setLoading(true);
+    setError(null);
+    
     try {
       const historyData = await userService.getUserHistory(user._id);
       setHistory(historyData);
+      setRetryCount(0);
     } catch (error) {
       console.error('Failed to load history:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load learning history');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (retryCount < maxRetries) {
+      setRetryCount(prev => prev + 1);
+      loadHistory();
     }
   };
 
@@ -116,6 +132,49 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
               }`}>
                 Fetching your learning history and achievements...
               </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`min-h-screen transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className={`max-w-md mx-4 p-8 rounded-3xl border text-center transition-colors ${
+            theme === 'dark' 
+              ? 'bg-slate-800/50 border-red-500/30 backdrop-blur-xl' 
+              : 'bg-white/80 border-red-200 backdrop-blur-xl'
+          }`}>
+            <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-8 h-8 text-white" />
+            </div>
+            <h3 className={`text-xl font-bold mb-4 transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              Failed to Load History
+            </h3>
+            <p className={`mb-6 transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              {error}
+            </p>
+            <div className="space-y-3">
+              {retryCount < maxRetries && (
+                <button
+                  onClick={handleRetry}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold flex items-center justify-center space-x-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Try Again ({retryCount + 1}/{maxRetries})</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -300,12 +359,15 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
             <h3 className={`text-2xl font-bold mb-4 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              No Learning History Yet
+              {filter === 'all' ? 'No Learning History Yet' : `No ${filter.replace('-', ' ')} courses found`}
             </h3>
             <p className={`text-lg mb-8 transition-colors ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>
-              Start your first learning journey to see your progress here
+              {filter === 'all' 
+                ? 'Start your first learning journey to see your progress here'
+                : 'Try adjusting your filter or start a new learning path'
+              }
             </p>
           </div>
         ) : (

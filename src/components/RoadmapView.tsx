@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { geminiService } from '../services/geminiService';
-import { CheckCircle, Circle, Lock, Play, Book, Award, Clock, ArrowLeft, Zap, Target, Users, TrendingUp, Star, ChevronRight, Sparkles, Brain, Code, Palette, Calculator, Globe, Lightbulb, BookOpen, Trophy, Timer, BarChart3, Rocket, Shield } from 'lucide-react';
+import { userService } from '../services/userService';
+import { CheckCircle, Circle, Lock, Play, Book, Award, Clock, ArrowLeft, Zap, Target, Users, TrendingUp, Star, ChevronRight, Sparkles, Brain, Code, Palette, Calculator, Globe, Lightbulb, BookOpen, Trophy, Timer, BarChart3, Rocket, Shield, FileText, Video, AlertCircle } from 'lucide-react';
 
 interface Chapter {
   id: string;
@@ -29,6 +31,21 @@ interface Roadmap {
   chapters: Chapter[];
 }
 
+interface DetailedCourse {
+  id: string;
+  roadmapId: string;
+  title: string;
+  description: string;
+  chapters: {
+    id: string;
+    title: string;
+    content: any;
+    quiz: any;
+    completed: boolean;
+  }[];
+  generatedAt: string;
+}
+
 interface RoadmapViewProps {
   subject: string;
   difficulty: string;
@@ -38,11 +55,16 @@ interface RoadmapViewProps {
 
 const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, onChapterSelect }) => {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [detailedCourse, setDetailedCourse] = useState<DetailedCourse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingCourse, setGeneratingCourse] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [currentRoadmapId, setCurrentRoadmapId] = useState<string>('');
+  const [courseProgress, setCourseProgress] = useState<{ [key: string]: boolean }>({});
 
   const maxRetries = 3;
 
@@ -57,6 +79,34 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     try {
       const roadmapData = await geminiService.generateRoadmap(subject, difficulty);
       setRoadmap(roadmapData);
+      
+      // Generate unique roadmap ID
+      const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setCurrentRoadmapId(roadmapId);
+      
+      // Save roadmap to user's history if logged in
+      if (user) {
+        try {
+          const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
+          await userService.addToHistory(user._id, {
+            subject,
+            difficulty,
+            roadmapId,
+            chapterProgress: roadmapData.chapters.map((chapter: Chapter) => ({
+              chapterId: chapter.id,
+              completed: false
+            })),
+            learningPreferences: {
+              learningStyle: preferences.learningStyle || 'mixed',
+              timeCommitment: preferences.timeCommitment || 'regular',
+              goals: preferences.goals || []
+            }
+          });
+        } catch (historyError) {
+          console.error('Failed to save to history:', historyError);
+        }
+      }
+      
       setRetryCount(0);
     } catch (error) {
       console.error('Failed to generate roadmap:', error);
@@ -66,10 +116,133 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     }
   };
 
+  const generateDetailedCourse = async () => {
+    if (!roadmap || !user) return;
+    
+    setGeneratingCourse(true);
+    setError(null);
+    
+    try {
+      const courseChapters = [];
+      
+      // Generate detailed content and quiz for each chapter
+      for (let i = 0; i < roadmap.chapters.length; i++) {
+        const chapter = roadmap.chapters[i];
+        
+        // Generate course content
+        const courseContent = await geminiService.generateCourseContent(
+          chapter.title, 
+          subject, 
+          difficulty
+        );
+        
+        // Generate quiz
+        const quiz = await geminiService.generateQuiz(
+          chapter.title, 
+          subject, 
+          difficulty
+        );
+        
+        courseChapters.push({
+          id: chapter.id,
+          title: chapter.title,
+          content: courseContent,
+          quiz: quiz,
+          completed: false
+        });
+        
+        // Small delay to avoid overwhelming the API
+        if (i < roadmap.chapters.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      const detailedCourseData: DetailedCourse = {
+        id: `course_${currentRoadmapId}`,
+        roadmapId: currentRoadmapId,
+        title: `Complete ${subject} Course`,
+        description: `Comprehensive ${subject} course with detailed content and quizzes`,
+        chapters: courseChapters,
+        generatedAt: new Date().toISOString()
+      };
+      
+      setDetailedCourse(detailedCourseData);
+      
+      // Save detailed course to localStorage for persistence
+      localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(detailedCourseData));
+      
+    } catch (error) {
+      console.error('Failed to generate detailed course:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate detailed course');
+    } finally {
+      setGeneratingCourse(false);
+    }
+  };
+
   const handleRetry = () => {
     if (retryCount < maxRetries) {
       setRetryCount(prev => prev + 1);
       generateRoadmap();
+    }
+  };
+
+  const handleChapterClick = (chapter: Chapter) => {
+    if (detailedCourse) {
+      const courseChapter = detailedCourse.chapters.find(c => c.id === chapter.id);
+      if (courseChapter) {
+        // Create enhanced chapter object with course content
+        const enhancedChapter = {
+          ...chapter,
+          courseContent: courseChapter.content,
+          quiz: courseChapter.quiz
+        };
+        setSelectedChapter(chapter.id);
+        onChapterSelect(enhancedChapter);
+      }
+    } else {
+      // If no detailed course, just pass the basic chapter
+      setSelectedChapter(chapter.id);
+      onChapterSelect(chapter);
+    }
+  };
+
+  const updateChapterProgress = async (chapterId: string, completed: boolean) => {
+    if (!user || !currentRoadmapId) return;
+    
+    try {
+      // Update local state
+      setCourseProgress(prev => ({
+        ...prev,
+        [chapterId]: completed
+      }));
+      
+      // Update in database
+      const history = await userService.getUserHistory(user._id);
+      const currentHistory = history.find(h => h.roadmapId === currentRoadmapId);
+      
+      if (currentHistory) {
+        await userService.updateChapterProgress(
+          user._id,
+          currentHistory._id,
+          chapterId,
+          completed
+        );
+      }
+      
+      // Update detailed course if it exists
+      if (detailedCourse) {
+        const updatedCourse = {
+          ...detailedCourse,
+          chapters: detailedCourse.chapters.map(chapter =>
+            chapter.id === chapterId ? { ...chapter, completed } : chapter
+          )
+        };
+        setDetailedCourse(updatedCourse);
+        localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(updatedCourse));
+      }
+      
+    } catch (error) {
+      console.error('Failed to update chapter progress:', error);
     }
   };
 
@@ -149,7 +322,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               : 'bg-white/80 border-red-200 backdrop-blur-xl'
           }`}>
             <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Zap className="w-8 h-8 text-white" />
+              <AlertCircle className="w-8 h-8 text-white" />
             </div>
             <h3 className={`text-xl font-bold mb-4 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -190,7 +363,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   if (!roadmap) return null;
 
   const SubjectIcon = getSubjectIcon(roadmap.subject);
-  const completedChapters = roadmap.chapters.filter(chapter => chapter.completed).length;
+  const completedChapters = roadmap.chapters.filter(chapter => courseProgress[chapter.id] || chapter.completed).length;
   const totalChapters = roadmap.chapters.length;
   const progress = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
 
@@ -383,9 +556,100 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                 }`}>Progress</span>
                 <span className="font-bold text-purple-500">{Math.round(progress)}%</span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Course Status</span>
+                <span className={`font-bold ${detailedCourse ? 'text-green-500' : 'text-orange-500'}`}>
+                  {detailedCourse ? 'Generated' : 'Basic'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Generate Detailed Course Button */}
+        {!detailedCourse && (
+          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 text-center transition-colors ${
+            theme === 'dark' 
+              ? 'bg-slate-800/50 border-white/10' 
+              : 'bg-white/80 border-gray-200'
+          }`}>
+            <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileText className="w-10 h-10 text-white" />
+            </div>
+            <h3 className={`text-2xl font-bold mb-4 transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
+              Ready for Detailed Learning?
+            </h3>
+            <p className={`text-lg mb-8 transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              Generate comprehensive course content with detailed explanations, code examples, videos, and quizzes for each chapter.
+            </p>
+            <button
+              onClick={generateDetailedCourse}
+              disabled={generatingCourse}
+              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center space-x-3 mx-auto ${
+                generatingCourse
+                  ? theme === 'dark'
+                    ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-lg hover:shadow-xl'
+              }`}
+            >
+              {generatingCourse ? (
+                <>
+                  <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Generating Course...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-6 h-6" />
+                  <span>Generate Detailed Course</span>
+                </>
+              )}
+            </button>
+            {generatingCourse && (
+              <p className={`mt-4 text-sm transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                This may take a few minutes as we generate comprehensive content for all chapters...
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Course Generation Progress */}
+        {generatingCourse && (
+          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+            theme === 'dark' 
+              ? 'bg-slate-800/50 border-white/10' 
+              : 'bg-white/80 border-gray-200'
+          }`}>
+            <div className="text-center space-y-6">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-purple-500/30 rounded-full animate-spin mx-auto">
+                  <div className="absolute top-0 left-0 w-4 h-4 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full"></div>
+                </div>
+                <Brain className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-purple-500" />
+              </div>
+              <div>
+                <h3 className={`text-xl font-bold mb-2 transition-colors ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
+                  Generating Comprehensive Course Content
+                </h3>
+                <p className={`transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Creating detailed lessons, examples, and quizzes for each chapter...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Roadmap Timeline */}
         <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
@@ -409,6 +673,8 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               {roadmap.chapters.map((chapter, index) => {
                 const ChapterIcon = getChapterIcon(index);
                 const isLeft = chapter.position === 'left';
+                const isCompleted = courseProgress[chapter.id] || chapter.completed;
+                const hasDetailedContent = detailedCourse?.chapters.find(c => c.id === chapter.id);
                 
                 return (
                   <div key={chapter.id} className="relative">
@@ -430,7 +696,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                               ? theme === 'dark'
                                 ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
                                 : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-2xl shadow-cyan-500/20'
-                              : chapter.completed
+                              : isCompleted
                                 ? theme === 'dark'
                                   ? 'border-green-500/30 bg-gradient-to-br from-green-500/10 to-emerald-500/10'
                                   : 'border-green-300 bg-gradient-to-br from-green-50 to-emerald-50'
@@ -438,14 +704,16 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                                   ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
                                   : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                           }`}
-                          onClick={() => {
-                            setSelectedChapter(chapter.id);
-                            onChapterSelect(chapter);
-                          }}
+                          onClick={() => handleChapterClick(chapter)}
                         >
                           {/* Status Badge */}
-                          <div className="absolute top-4 right-4">
-                            {chapter.completed ? (
+                          <div className="absolute top-4 right-4 flex items-center space-x-2">
+                            {hasDetailedContent && (
+                              <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                                <FileText className="w-3 h-3 text-white" />
+                              </div>
+                            )}
+                            {isCompleted ? (
                               <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
                                 <CheckCircle className="w-5 h-5 text-white" />
                               </div>
@@ -460,7 +728,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
 
                           <div className="space-y-4">
                             <div>
-                              <h3 className={`text-xl font-bold mb-2 pr-12 transition-colors ${
+                              <h3 className={`text-xl font-bold mb-2 pr-16 transition-colors ${
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
                                 {chapter.title}
@@ -530,13 +798,38 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                               </div>
                             </div>
 
+                            {/* Content Status */}
+                            {hasDetailedContent && (
+                              <div className={`flex items-center space-x-2 text-xs ${
+                                theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
+                              }`}>
+                                <Video className="w-4 h-4" />
+                                <span>Detailed content & quiz available</span>
+                              </div>
+                            )}
+
                             {/* Action Button */}
-                            <button className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 ${
-                              chapter.completed
-                                ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
-                                : 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:from-cyan-600 hover:to-purple-700'
-                            }`}>
-                              <span>{chapter.completed ? 'Review Chapter' : 'Start Learning'}</span>
+                            <button 
+                              className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 ${
+                                isCompleted
+                                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
+                                  : hasDetailedContent
+                                    ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700'
+                                    : 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:from-cyan-600 hover:to-purple-700'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleChapterClick(chapter);
+                              }}
+                            >
+                              <span>
+                                {isCompleted 
+                                  ? 'Review Chapter' 
+                                  : hasDetailedContent 
+                                    ? 'Start Learning' 
+                                    : 'View Overview'
+                                }
+                              </span>
                               <ChevronRight className="w-4 h-4" />
                             </button>
                           </div>
@@ -602,11 +895,11 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                 <Users className="w-8 h-8 text-white" />
               </div>
               <div className="text-3xl font-bold text-orange-500 mb-2">
-                {roadmap.chapters.reduce((acc, chapter) => acc + chapter.resources, 0)}
+                {detailedCourse ? detailedCourse.chapters.length : 0}
               </div>
               <div className={`text-sm transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>Learning Resources</div>
+              }`}>Detailed Lessons</div>
             </div>
           </div>
         </div>
