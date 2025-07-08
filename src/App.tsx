@@ -42,7 +42,10 @@ const AppContent: React.FC = () => {
       goals
     }));
     
-    // Create learning history entry will be handled in RoadmapView
+    // Generate unique roadmap ID
+    const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setCurrentRoadmapId(roadmapId);
+    
     setCurrentState('roadmap');
   };
 

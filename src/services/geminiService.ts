@@ -285,13 +285,6 @@ Return ONLY the JSON object, no additional text or formatting.`;
   async generateCourseContent(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
-    // Generate a realistic YouTube search query and create a proper URL
-    const generateYouTubeUrl = (topic: string, subject: string) => {
-      const searchQuery = `${topic} ${subject} tutorial ${difficulty}`.replace(/\s+/g, '+');
-      // For demo purposes, we'll use a search URL that users can click to find relevant videos
-      return `https://www.youtube.com/results?search_query=${searchQuery}`;
-    };
-    
     const prompt = `Create comprehensive course content for "${chapterTitle}" in ${subject} at ${difficulty} level.
 Learning preferences: ${preferences.learningStyle || 'mixed'} style, ${preferences.timeCommitment || 'regular'} commitment.
 
@@ -319,7 +312,7 @@ Please respond with ONLY a valid JSON object in this exact format:
     ],
     "summary": "In this chapter, we covered the essential aspects of ${chapterTitle} in ${subject}. You learned about the core concepts, saw practical examples, and understand how to apply this knowledge. The key takeaways include understanding the fundamentals, recognizing patterns, and being able to implement these concepts in your own projects."
   },
-  "videoUrl": "${generateYouTubeUrl(chapterTitle, subject)}",
+  "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   "codeExamples": [
     {
       "title": "Basic Example: ${chapterTitle}",

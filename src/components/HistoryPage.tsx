@@ -23,6 +23,8 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
   useEffect(() => {
     if (user) {
       loadHistory();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 

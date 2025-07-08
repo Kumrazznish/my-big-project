@@ -158,20 +158,14 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
   const extractVideoId = (url: string) => {
     if (!url) return null;
     
-    // Handle various YouTube URL formats
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
-      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
-    ];
-    
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match && match[1]) {
-        return match[1];
-      }
+    // Only handle actual YouTube video URLs, not search URLs
+    if (url.includes('youtube.com/results') || url.includes('search_query')) {
+      return null;
     }
     
-    return null;
+    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
   };
 
   const isValidYouTubeUrl = (url: string) => {

@@ -69,8 +69,19 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   const maxRetries = 3;
 
   useEffect(() => {
+    // Load existing detailed course from localStorage if available
+    const savedCourse = localStorage.getItem(`detailed_course_${currentRoadmapId}`);
+    if (savedCourse) {
+      try {
+        const parsedCourse = JSON.parse(savedCourse);
+        setDetailedCourse(parsedCourse);
+      } catch (error) {
+        console.error('Failed to parse saved course:', error);
+      }
+    }
+    
     generateRoadmap();
-  }, [subject, difficulty]);
+  }, [subject, difficulty, currentRoadmapId]);
 
   const generateRoadmap = async () => {
     setLoading(true);
