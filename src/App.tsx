@@ -32,6 +32,8 @@ const AppContent: React.FC = () => {
   const [currentRoadmapId, setCurrentRoadmapId] = useState<string>('');
 
   const handleSubjectSelect = async (subject: string, difficulty: string, learningStyle: string, timeCommitment: string, goals: string[]) => {
+    console.log('Subject selected:', { subject, difficulty, learningStyle, timeCommitment, goals });
+    
     setSelectedSubject(subject);
     setSelectedDifficulty(difficulty);
     
@@ -46,15 +48,18 @@ const AppContent: React.FC = () => {
     const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setCurrentRoadmapId(roadmapId);
     
+    console.log('Navigating to roadmap view...');
     setCurrentState('roadmap');
   };
 
   const handleChapterSelect = (chapter: Chapter) => {
+    console.log('Chapter selected:', chapter);
     setSelectedChapter(chapter);
     setCurrentState('chapter');
   };
 
   const handleQuizStart = (chapter: Chapter) => {
+    console.log('Quiz started for chapter:', chapter);
     setSelectedChapter(chapter);
     setCurrentState('quiz');
   };
@@ -87,6 +92,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleBackToSelection = () => {
+    console.log('Going back to selection');
     setCurrentState('selection');
     setSelectedSubject('');
     setSelectedDifficulty('');
@@ -95,19 +101,23 @@ const AppContent: React.FC = () => {
   };
 
   const handleBackToRoadmap = () => {
+    console.log('Going back to roadmap');
     setCurrentState('roadmap');
     setSelectedChapter(null);
   };
 
   const handleBackToChapter = () => {
+    console.log('Going back to chapter');
     setCurrentState('chapter');
   };
 
   const handleNavigate = (view: string) => {
+    console.log('Navigating to:', view);
     setCurrentState(view as AppState);
   };
 
   const handleContinueLearning = (subject: string, difficulty: string, roadmapId: string) => {
+    console.log('Continuing learning:', { subject, difficulty, roadmapId });
     setSelectedSubject(subject);
     setSelectedDifficulty(difficulty);
     setCurrentRoadmapId(roadmapId);
@@ -115,6 +125,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleStartNewLearning = () => {
+    console.log('Starting new learning path');
     setSelectedSubject('');
     setSelectedDifficulty('');
     setSelectedChapter(null);
@@ -124,6 +135,10 @@ const AppContent: React.FC = () => {
 
   // Show navigation for authenticated users
   const showNavigation = ['dashboard', 'history', 'selection', 'roadmap', 'chapter', 'quiz'].includes(currentState);
+
+  console.log('Current state:', currentState);
+  console.log('User:', user);
+  console.log('Show navigation:', showNavigation);
 
   return (
     <div className="min-h-screen">
@@ -136,7 +151,7 @@ const AppContent: React.FC = () => {
           <div className="max-w-6xl mx-auto px-4 py-12">
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                Welcome back, {user?.firstName}!
+                Welcome back, {user?.firstName || 'User'}!
               </h1>
               <p className="text-xl text-gray-600">
                 Continue your learning journey or start something new
@@ -189,36 +204,51 @@ const AppContent: React.FC = () => {
       )}
       
       {currentState === 'selection' && (
-        <SubjectSelector onSubjectSelect={handleSubjectSelect} />
+        <div className="min-h-screen">
+          <SubjectSelector onSubjectSelect={handleSubjectSelect} />
+        </div>
       )}
       
-      {currentState === 'roadmap' && (
-        <RoadmapView
-          subject={selectedSubject}
-          difficulty={selectedDifficulty}
-          onBack={handleBackToSelection}
-          onChapterSelect={handleChapterSelect}
-        />
+      {currentState === 'roadmap' && selectedSubject && selectedDifficulty && (
+        <div className="min-h-screen">
+          <RoadmapView
+            subject={selectedSubject}
+            difficulty={selectedDifficulty}
+            onBack={handleBackToSelection}
+            onChapterSelect={handleChapterSelect}
+          />
+        </div>
       )}
       
       {currentState === 'chapter' && selectedChapter && (
-        <ChapterDetails
-          chapter={selectedChapter}
-          subject={selectedSubject}
-          difficulty={selectedDifficulty}
-          onBack={handleBackToRoadmap}
-          onQuizStart={handleQuizStart}
-        />
+        <div className="min-h-screen">
+          <ChapterDetails
+            chapter={selectedChapter}
+            subject={selectedSubject}
+            difficulty={selectedDifficulty}
+            onBack={handleBackToRoadmap}
+            onQuizStart={handleQuizStart}
+          />
+        </div>
       )}
       
       {currentState === 'quiz' && selectedChapter && (
-        <QuizView
-          chapter={selectedChapter}
-          subject={selectedSubject}
-          difficulty={selectedDifficulty}
-          onBack={handleBackToChapter}
-          onQuizComplete={handleQuizComplete}
-        />
+        <div className="min-h-screen">
+          <QuizView
+            chapter={selectedChapter}
+            subject={selectedSubject}
+            difficulty={selectedDifficulty}
+            onBack={handleBackToChapter}
+            onQuizComplete={handleQuizComplete}
+          />
+        </div>
+      )}
+
+      {/* Debug info - remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs">
+          State: {currentState} | Subject: {selectedSubject} | Difficulty: {selectedDifficulty}
+        </div>
       )}
     </div>
   );

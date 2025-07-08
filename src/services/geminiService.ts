@@ -251,6 +251,8 @@ export class GeminiService {
   }
 
   async generateRoadmap(subject: string, difficulty: string): Promise<any> {
+    console.log('GeminiService: Starting roadmap generation for:', { subject, difficulty });
+    
     // Add a small delay before making the request to help with rate limiting
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -324,15 +326,20 @@ IMPORTANT REQUIREMENTS:
 Return ONLY the JSON object, no additional text or formatting.`;
 
     const response = await this.makeRequest(prompt);
+    console.log('GeminiService: Received response from API');
     
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
+      console.log('GeminiService: Cleaned response length:', cleanedResponse.length);
       const parsedData = JSON.parse(cleanedResponse);
+      console.log('GeminiService: Successfully parsed JSON data');
       
       if (!this.validateRoadmapData(parsedData)) {
+        console.error('GeminiService: Roadmap data validation failed');
         throw new Error('Invalid roadmap data structure received from AI service.');
       }
       
+      console.log('GeminiService: Roadmap validation passed');
       return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);

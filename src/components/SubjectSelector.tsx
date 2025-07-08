@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Book, Code, Palette, Calculator, Globe, Zap, ArrowRight, Brain, Target, Clock, Users, Sparkles, TrendingUp, Award, CheckCircle, Star } from 'lucide-react';
 
@@ -190,6 +191,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
   const [rateLimitStatus, setRateLimitStatus] = useState({ canMakeRequest: true, waitTime: 0, requestsRemaining: 15 });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Check rate limit status periodically
   useEffect(() => {
@@ -219,6 +221,16 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         alert(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before generating your roadmap.`);
         return;
       }
+      
+      console.log('Submitting subject selection:', {
+        selectedSubject,
+        selectedDifficulty,
+        selectedLearningStyle,
+        selectedTimeCommitment,
+        selectedGoals
+      });
+      
+      setIsLoading(true);
       onSubjectSelect(selectedSubject, selectedDifficulty, selectedLearningStyle, selectedTimeCommitment, selectedGoals);
     }
   };
@@ -689,9 +701,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
           ) : (
             <button
               onClick={handleSubmit}
-              disabled={!canProceed() || !rateLimitStatus.canMakeRequest}
+              disabled={!canProceed() || !rateLimitStatus.canMakeRequest || isLoading}
               className={`group px-8 py-4 rounded-xl font-semibold transition-all flex items-center space-x-2 ${
-                canProceed() && rateLimitStatus.canMakeRequest
+                canProceed() && rateLimitStatus.canMakeRequest && !isLoading
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 hover:scale-105 shadow-lg hover:shadow-xl'
                   : theme === 'dark'
                     ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
@@ -699,12 +711,18 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
               }`}
             >
               <span>
-                {!rateLimitStatus.canMakeRequest 
+                {isLoading
+                  ? 'Generating...'
+                  : !rateLimitStatus.canMakeRequest 
                   ? `Wait ${Math.ceil(rateLimitStatus.waitTime / 1000)}s` 
                   : 'Generate My Roadmap'
                 }
               </span>
-              <Sparkles size={20} className="group-hover:scale-110 transition-transform" />
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Sparkles size={20} className="group-hover:scale-110 transition-transform" />
+              )}
             </button>
           )}
           

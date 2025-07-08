@@ -69,6 +69,8 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   const maxRetries = 3;
 
   useEffect(() => {
+    console.log('RoadmapView mounted with:', { subject, difficulty });
+    
     // Load existing detailed course from localStorage if available
     const savedCourse = localStorage.getItem(`detailed_course_${currentRoadmapId}`);
     if (savedCourse) {
@@ -84,6 +86,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   }, [subject, difficulty, currentRoadmapId]);
 
   const generateRoadmap = async () => {
+    console.log('Generating roadmap for:', { subject, difficulty });
     setLoading(true);
     setError(null);
     
@@ -95,6 +98,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       }
       
       const roadmapData = await geminiService.generateRoadmap(subject, difficulty);
+      console.log('Roadmap generated successfully:', roadmapData);
       setRoadmap(roadmapData);
       
       // Generate unique roadmap ID
@@ -127,6 +131,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       setRetryCount(0);
     } catch (error) {
       console.error('Failed to generate roadmap:', error);
+      console.error('Error details:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate roadmap');
     } finally {
       setLoading(false);
