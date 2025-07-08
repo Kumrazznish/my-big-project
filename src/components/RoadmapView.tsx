@@ -109,13 +109,13 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               Go Back
             </button>
             <button
-              onClick={generateRoadmap}
-              onClick={handleRetry}
-              disabled={retrying}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {retrying ? 'Retrying...' : 'Try Again'}
-            </button>
+  onClick={handleRetry}
+  disabled={retrying}
+  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {retrying ? 'Retrying...' : 'Try Again'}
+</button>
+
           </div>
         </div>
       </div>
