@@ -141,7 +141,10 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   };
 
   const generateDetailedCourse = async () => {
-    if (!roadmap || !user) return;
+    if (!roadmap || !user) {
+      console.error('Cannot generate detailed course: missing roadmap or user');
+      return;
+    }
     
     setGeneratingCourse(true);
     setError(null);
@@ -657,83 +660,6 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           </div>
         </div>
 
-        {/* Generate Detailed Course Button */}
-        {!detailedCourse && !generatingCourse && user && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 text-center transition-colors ${
-            theme === 'dark' 
-              ? 'bg-slate-800/50 border-white/10' 
-              : 'bg-white/80 border-gray-200'
-          }`}>
-            <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-8">
-              <Sparkles className="w-12 h-12 text-white" />
-            </div>
-            <h3 className={`text-3xl font-bold mb-6 transition-colors ${
-              theme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>
-              Ready for Enhanced Learning?
-            </h3>
-            <p className={`text-xl mb-10 max-w-3xl mx-auto transition-colors ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              Generate comprehensive course content with detailed explanations, interactive code examples, 
-              YouTube video lessons, practical exercises, and challenging quizzes for each chapter.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-              <div className={`p-6 rounded-2xl transition-colors ${
-                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
-              }`}>
-                <Video className="w-8 h-8 text-red-500 mx-auto mb-4" />
-                <h4 className={`font-bold mb-2 transition-colors ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>Video Lessons</h4>
-                <p className={`text-sm transition-colors ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                }`}>Curated YouTube videos</p>
-              </div>
-              <div className={`p-6 rounded-2xl transition-colors ${
-                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
-              }`}>
-                <Code className="w-8 h-8 text-green-500 mx-auto mb-4" />
-                <h4 className={`font-bold mb-2 transition-colors ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>Code Examples</h4>
-                <p className={`text-sm transition-colors ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                }`}>Interactive coding demos</p>
-              </div>
-              <div className={`p-6 rounded-2xl transition-colors ${
-                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
-              }`}>
-                <Award className="w-8 h-8 text-purple-500 mx-auto mb-4" />
-                <h4 className={`font-bold mb-2 transition-colors ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>Smart Quizzes</h4>
-                <p className={`text-sm transition-colors ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                }`}>Adaptive assessments</p>
-              </div>
-              <div className={`p-6 rounded-2xl transition-colors ${
-                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
-              }`}>
-                <Target className="w-8 h-8 text-blue-500 mx-auto mb-4" />
-                <h4 className={`font-bold mb-2 transition-colors ${
-                  theme === 'dark' ? 'text-white' : 'text-gray-900'
-                }`}>Exercises</h4>
-                <p className={`text-sm transition-colors ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                }`}>Hands-on practice</p>
-              </div>
-            </div>
-            <button
-              onClick={generateDetailedCourse}
-              className="px-12 py-5 rounded-xl font-bold text-xl transition-all duration-300 flex items-center space-x-4 mx-auto bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-2xl hover:shadow-purple-500/25"
-            >
-              <Sparkles className="w-8 h-8" />
-              <span>Generate Enhanced Course</span>
-            </button>
-          </div>
-        )}
-
         {/* Course Generation Progress */}
         {generatingCourse && (
           <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
@@ -933,31 +859,6 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                                 <span className="font-medium">Enhanced content & quiz available</span>
                               </div>
                             )}
-
-                            {/* Action Button */}
-                            <button 
-                              className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-3 ${
-                                isCompleted
-                                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
-                                  : hasDetailedContent
-                                    ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700'
-                                    : 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:from-cyan-600 hover:to-purple-700'
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleChapterClick(chapter);
-                              }}
-                            >
-                              <span>
-                                {isCompleted 
-                                  ? 'Review Chapter' 
-                                  : hasDetailedContent 
-                                    ? 'Start Learning' 
-                                    : 'View Overview'
-                                }
-                              </span>
-                              <ChevronRight className="w-5 h-5" />
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -969,15 +870,83 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           </div>
         </div>
 
-        {/* Generate Detailed Course Button for bottom */}
+        {/* Generate Detailed Course Button */}
         {!detailedCourse && !generatingCourse && user && (
           <div className="text-center">
+            <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-8 transition-colors ${
+              theme === 'dark' 
+                ? 'bg-slate-800/50 border-white/10' 
+                : 'bg-white/80 border-gray-200'
+            }`}>
+              <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-8">
+                <Sparkles className="w-12 h-12 text-white" />
+              </div>
+              <h3 className={`text-3xl font-bold mb-6 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>
+                Ready for Enhanced Learning?
+              </h3>
+              <p className={`text-xl mb-10 max-w-3xl mx-auto transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
+                Generate comprehensive course content with detailed explanations, interactive code examples, 
+                YouTube video lessons, practical exercises, and challenging quizzes for each chapter.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className={`p-6 rounded-2xl transition-colors ${
+                  theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+                }`}>
+                  <Video className="w-8 h-8 text-red-500 mx-auto mb-4" />
+                  <h4 className={`font-bold mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>Video Lessons</h4>
+                  <p className={`text-sm transition-colors ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Curated YouTube videos</p>
+                </div>
+                <div className={`p-6 rounded-2xl transition-colors ${
+                  theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+                }`}>
+                  <Code className="w-8 h-8 text-green-500 mx-auto mb-4" />
+                  <h4 className={`font-bold mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>Code Examples</h4>
+                  <p className={`text-sm transition-colors ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Interactive coding demos</p>
+                </div>
+                <div className={`p-6 rounded-2xl transition-colors ${
+                  theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+                }`}>
+                  <Award className="w-8 h-8 text-purple-500 mx-auto mb-4" />
+                  <h4 className={`font-bold mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>Smart Quizzes</h4>
+                  <p className={`text-sm transition-colors ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Adaptive assessments</p>
+                </div>
+                <div className={`p-6 rounded-2xl transition-colors ${
+                  theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+                }`}>
+                  <Target className="w-8 h-8 text-blue-500 mx-auto mb-4" />
+                  <h4 className={`font-bold mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>Exercises</h4>
+                  <p className={`text-sm transition-colors ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>Hands-on practice</p>
+                </div>
+              </div>
+            </div>
+            
             <button
               onClick={generateDetailedCourse}
-              className="px-16 py-6 rounded-2xl font-bold text-2xl transition-all duration-300 flex items-center space-x-4 mx-auto bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-2xl hover:shadow-purple-500/25"
+              disabled={generatingCourse}
+              className="px-16 py-6 rounded-2xl font-bold text-2xl transition-all duration-300 flex items-center space-x-4 mx-auto bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-2xl hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="w-10 h-10" />
-              <span>Generate Detailed Course</span>
+              <span>{generatingCourse ? 'Generating...' : 'Generate Enhanced Course'}</span>
             </button>
             <p className={`mt-4 text-lg transition-colors ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'

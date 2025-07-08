@@ -47,7 +47,12 @@ import {
   BarChart3,
   Sparkles,
   Menu,
-  X
+  X,
+  MessageCircle,
+  PenTool,
+  Search,
+  BarChart,
+  Calendar
 } from 'lucide-react';
 
 interface DetailedCourse {
@@ -165,11 +170,11 @@ const DetailedCoursePage: React.FC<DetailedCoursePageProps> = ({
   const progress = totalChapters > 0 ? (completedChapters / totalChapters) * 100 : 0;
 
   const aiFeatures = [
-    { id: 'notes', name: 'Smart Notes', icon: FileText, description: 'AI-powered note taking' },
-    { id: 'explainer', name: 'Concept Explainer', icon: Lightbulb, description: 'Explain any concept' },
-    { id: 'code', name: 'Code Analyzer', icon: Code, description: 'Analyze and improve code' },
-    { id: 'progress', name: 'Progress Tracker', icon: TrendingUp, description: 'Track your learning' },
-    { id: 'planner', name: 'Study Planner', icon: Timer, description: 'Plan your study sessions' }
+    { id: 'notes', name: 'Smart Notes', icon: PenTool, description: 'AI-powered note taking', color: 'from-blue-500 to-cyan-500' },
+    { id: 'explainer', name: 'Concept Explainer', icon: Lightbulb, description: 'Explain any concept', color: 'from-yellow-500 to-orange-500' },
+    { id: 'code', name: 'Code Analyzer', icon: Code, description: 'Analyze and improve code', color: 'from-green-500 to-emerald-500' },
+    { id: 'progress', name: 'Progress Tracker', icon: BarChart, description: 'Track your learning', color: 'from-purple-500 to-pink-500' },
+    { id: 'planner', name: 'Study Planner', icon: Calendar, description: 'Plan your study sessions', color: 'from-indigo-500 to-purple-500' }
   ];
 
   if (!selectedChapter) {
@@ -326,9 +331,7 @@ const DetailedCoursePage: React.FC<DetailedCoursePageProps> = ({
                     onClick={() => setActiveAIFeature(activeAIFeature === feature.id ? null : feature.id)}
                     className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-all ${
                       activeAIFeature === feature.id
-                        ? theme === 'dark'
-                          ? 'bg-purple-500/20 text-purple-400'
-                          : 'bg-purple-100 text-purple-600'
+                        ? `bg-gradient-to-r ${feature.color} text-white`
                         : theme === 'dark'
                           ? 'hover:bg-slate-700 text-gray-400 hover:text-white'
                           : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
