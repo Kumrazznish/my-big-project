@@ -5,8 +5,6 @@ import { geminiService } from '../services/geminiService';
 import { userService } from '../services/userService';
 import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle, Brain } from 'lucide-react';
 
-import { geminiService } from '../services/geminiService';
-
 interface Chapter {
   id: string;
   title: string;

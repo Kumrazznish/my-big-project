@@ -3,8 +3,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { geminiService } from '../services/geminiService';
 import { CheckCircle, XCircle, Clock, ArrowRight, ArrowLeft, RotateCcw, Award, Target, Zap, Brain, AlertCircle, Trophy, Star, TrendingUp } from 'lucide-react';
 
-import { geminiService } from '../services/geminiService';
-
 interface Question {
   id: string;
   type: string;
