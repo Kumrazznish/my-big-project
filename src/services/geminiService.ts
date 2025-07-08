@@ -27,7 +27,25 @@ export class GeminiService {
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 8192,
-          }
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
         })
       });
 
@@ -51,6 +69,9 @@ export class GeminiService {
             if (response.status === 503) {
               throw new Error('The AI service is currently experiencing high demand. Please try again in a few moments.');
             }
+            if (response.status === 429) {
+              throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
+            }
             throw new Error(errorData.error.message);
           }
         } catch (parseError) {
@@ -64,6 +85,8 @@ export class GeminiService {
           throw new Error('Too many requests. Please wait a moment before trying again.');
         } else if (response.status === 401) {
           throw new Error('API authentication failed. Please check your API key configuration.');
+        } else if (response.status === 400) {
+          throw new Error('Invalid request. Please try again with different parameters.');
         } else {
           throw new Error(`Service temporarily unavailable (${response.status}). Please try again later.`);
         }
@@ -72,13 +95,23 @@ export class GeminiService {
       const data = await response.json();
       
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response structure from Gemini API');
+        throw new Error('Invalid response structure from Gemini API. Please try again.');
       }
 
-      return data.candidates[0].content.parts[0].text;
+      const content = data.candidates[0].content;
+      if (!content.parts || !content.parts[0] || !content.parts[0].text) {
+        throw new Error('No content received from AI service. Please try again.');
+      }
+
+      return content.parts[0].text;
     } catch (error) {
-      console.error('Gemini API Error:', error);
-      throw error;
+      if (error instanceof Error) {
+        console.error('Gemini API Error:', error.message);
+        throw error;
+      } else {
+        console.error('Unknown Gemini API Error:', error);
+        throw new Error('An unexpected error occurred while communicating with the AI service.');
+      }
     }
   }
 
@@ -86,15 +119,79 @@ export class GeminiService {
     // Remove markdown code blocks if present
     let cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     
+    // Remove any leading/trailing whitespace
+    cleaned = cleaned.trim();
+    
     // Find the first { and last } to extract JSON
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     
-    if (firstBrace !== -1 && lastBrace !== -1) {
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
     }
     
     return cleaned.trim();
+  }
+
+  private validateRoadmapData(data: any): boolean {
+    return (
+      data &&
+      typeof data === 'object' &&
+      data.subject &&
+      data.difficulty &&
+      data.description &&
+      data.chapters &&
+      Array.isArray(data.chapters) &&
+      data.chapters.length > 0 &&
+      data.chapters.every((chapter: any) => 
+        chapter.id &&
+        chapter.title &&
+        chapter.description &&
+        chapter.duration &&
+        chapter.position &&
+        Array.isArray(chapter.keyTopics) &&
+        Array.isArray(chapter.skills) &&
+        Array.isArray(chapter.practicalProjects)
+      )
+    );
+  }
+
+  private validateCourseContent(data: any): boolean {
+    return (
+      data &&
+      typeof data === 'object' &&
+      data.title &&
+      data.description &&
+      data.content &&
+      typeof data.content === 'object' &&
+      data.content.introduction &&
+      data.content.mainContent &&
+      Array.isArray(data.content.keyPoints) &&
+      data.content.summary
+    );
+  }
+
+  private validateQuizData(data: any): boolean {
+    return (
+      data &&
+      typeof data === 'object' &&
+      data.title &&
+      data.questions &&
+      Array.isArray(data.questions) &&
+      data.questions.length > 0 &&
+      data.questions.every((question: any) => 
+        question.id &&
+        question.question &&
+        Array.isArray(question.options) &&
+        question.options.length === 4 &&
+        typeof question.correctAnswer === 'number' &&
+        question.correctAnswer >= 0 &&
+        question.correctAnswer < 4 &&
+        question.explanation &&
+        question.difficulty &&
+        typeof question.points === 'number'
+      )
+    );
   }
 
   async generateRoadmap(subject: string, difficulty: string): Promise<any> {
@@ -111,30 +208,59 @@ Please respond with ONLY a valid JSON object in this exact format:
 {
   "subject": "${subject}",
   "difficulty": "${difficulty}",
-  "description": "A comprehensive learning path for ${subject} designed for ${difficulty} learners",
+  "description": "A comprehensive learning path for ${subject} designed for ${difficulty} learners with ${preferences.learningStyle || 'mixed'} learning style",
   "totalDuration": "8-12 weeks",
   "estimatedHours": "40-60 hours",
-  "prerequisites": ["Basic computer skills", "Internet access"],
-  "learningOutcomes": ["Outcome 1", "Outcome 2", "Outcome 3"],
+  "prerequisites": ["Basic computer skills", "Internet access", "Text editor or IDE"],
+  "learningOutcomes": [
+    "Master fundamental concepts of ${subject}",
+    "Build practical projects using ${subject}",
+    "Understand industry best practices",
+    "Develop problem-solving skills",
+    "Create a portfolio of work"
+  ],
   "chapters": [
     {
       "id": "chapter-1",
       "title": "Introduction to ${subject}",
-      "description": "Learn the fundamentals and basic concepts",
+      "description": "Learn the fundamentals and basic concepts of ${subject}",
       "duration": "1 week",
       "estimatedHours": "4-6 hours",
       "difficulty": "beginner",
       "position": "left",
       "completed": false,
-      "keyTopics": ["Topic 1", "Topic 2", "Topic 3"],
-      "skills": ["Skill 1", "Skill 2"],
-      "practicalProjects": ["Project 1"],
-      "resources": 3
+      "keyTopics": ["Basic concepts", "Terminology", "Getting started", "Environment setup"],
+      "skills": ["Understanding fundamentals", "Basic setup"],
+      "practicalProjects": ["Hello World project"],
+      "resources": 5
+    },
+    {
+      "id": "chapter-2",
+      "title": "Core Concepts",
+      "description": "Deep dive into the core concepts and principles",
+      "duration": "1-2 weeks",
+      "estimatedHours": "6-8 hours",
+      "difficulty": "beginner",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Core principles", "Best practices", "Common patterns"],
+      "skills": ["Problem solving", "Pattern recognition"],
+      "practicalProjects": ["Basic application"],
+      "resources": 6
     }
   ]
 }
 
-Create 10-12 chapters with progressive difficulty. Alternate position between "left" and "right". Make it specific to ${subject} and appropriate for ${difficulty} level learners. Include practical projects and key skills for each chapter.
+IMPORTANT REQUIREMENTS:
+1. Create exactly 10-12 chapters with progressive difficulty
+2. Alternate position between "left" and "right" for each chapter
+3. Make content specific to ${subject} and appropriate for ${difficulty} level
+4. Include realistic time estimates and practical projects
+5. Ensure keyTopics, skills, and practicalProjects are relevant arrays
+6. Set all chapters as completed: false initially
+7. Include 3-5 prerequisites relevant to ${subject}
+8. Include 4-6 learning outcomes specific to ${subject}
+9. Make descriptions detailed and educational
 
 Return ONLY the JSON object, no additional text or formatting.`;
 
@@ -142,10 +268,17 @@ Return ONLY the JSON object, no additional text or formatting.`;
     
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
-      return JSON.parse(cleanedResponse);
+      const parsedData = JSON.parse(cleanedResponse);
+      
+      if (!this.validateRoadmapData(parsedData)) {
+        throw new Error('Invalid roadmap data structure received from AI service.');
+      }
+      
+      return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
-      throw new Error('Failed to parse roadmap response. Please try again.');
+      console.error('Raw response:', response);
+      throw new Error('Failed to parse roadmap response. The AI service returned invalid data. Please try again.');
     }
   }
 
@@ -159,53 +292,100 @@ Please respond with ONLY a valid JSON object in this exact format:
 
 {
   "title": "${chapterTitle}",
-  "description": "Detailed description of what this chapter covers",
-  "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
+  "description": "Comprehensive description of what this chapter covers in ${subject}",
+  "learningObjectives": [
+    "Understand the fundamental concepts of ${chapterTitle}",
+    "Apply knowledge in practical scenarios",
+    "Identify key principles and best practices",
+    "Build confidence in using these concepts"
+  ],
   "estimatedTime": "4-6 hours",
   "content": {
-    "introduction": "Introduction to the chapter concepts",
-    "mainContent": "Comprehensive chapter content with explanations, examples, and key concepts. Include practical examples and real-world applications. Make this content educational and engaging.",
-    "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
-    "summary": "Chapter summary and key takeaways"
+    "introduction": "This chapter introduces you to ${chapterTitle} in the context of ${subject}. We'll explore the fundamental concepts, understand why they're important, and see how they fit into the bigger picture of ${subject} development.",
+    "mainContent": "Comprehensive educational content about ${chapterTitle}. This should be detailed, informative, and include practical examples. Cover the key concepts step by step, explain the reasoning behind different approaches, and provide real-world context. Include explanations of how this relates to ${subject} and why it's important for ${difficulty} level learners. Make this content substantial and educational - at least 500 words of detailed explanation with examples and practical applications.",
+    "keyPoints": [
+      "Key concept 1 related to ${chapterTitle}",
+      "Key concept 2 with practical application",
+      "Key concept 3 for ${difficulty} level understanding",
+      "Best practices and common pitfalls",
+      "Real-world applications and use cases"
+    ],
+    "summary": "In this chapter, we covered the essential aspects of ${chapterTitle} in ${subject}. You learned about the core concepts, saw practical examples, and understand how to apply this knowledge. The key takeaways include understanding the fundamentals, recognizing patterns, and being able to implement these concepts in your own projects."
   },
   "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   "codeExamples": [
     {
-      "title": "Example 1 Title",
-      "code": "// Example code snippet 1",
-      "explanation": "Explanation of the code"
+      "title": "Basic Example: ${chapterTitle}",
+      "code": "// Example code demonstrating ${chapterTitle} concepts\n// This is a practical example for ${difficulty} level\nconsole.log('Hello, ${subject}!');",
+      "explanation": "This example demonstrates the basic concepts of ${chapterTitle}. It shows how to implement the fundamental principles we discussed in a practical way."
+    },
+    {
+      "title": "Advanced Example: ${chapterTitle} in Practice",
+      "code": "// More advanced example showing real-world usage\n// Suitable for ${difficulty} level learners\nfunction example() {\n  return 'Advanced ${chapterTitle} example';\n}",
+      "explanation": "This advanced example shows how ${chapterTitle} is used in real-world scenarios. It demonstrates best practices and common patterns."
     }
   ],
   "practicalExercises": [
     {
-      "title": "Exercise 1",
-      "description": "Exercise description",
+      "title": "Exercise 1: Basic ${chapterTitle}",
+      "description": "Practice the fundamental concepts by implementing a basic example of ${chapterTitle}",
       "difficulty": "easy"
+    },
+    {
+      "title": "Exercise 2: Applied ${chapterTitle}",
+      "description": "Apply your knowledge to solve a practical problem using ${chapterTitle} concepts",
+      "difficulty": "medium"
     }
   ],
   "additionalResources": [
     {
-      "title": "Resource Title",
-      "url": "https://example.com",
-      "type": "article",
-      "description": "Brief description of the resource"
+      "title": "Official ${subject} Documentation",
+      "url": "https://example.com/docs",
+      "type": "documentation",
+      "description": "Official documentation covering ${chapterTitle} concepts"
+    },
+    {
+      "title": "Tutorial: ${chapterTitle} Deep Dive",
+      "url": "https://example.com/tutorial",
+      "type": "tutorial",
+      "description": "Comprehensive tutorial on ${chapterTitle} with examples"
     }
   ],
-  "nextSteps": ["What to do after completing this chapter"]
+  "nextSteps": [
+    "Practice the concepts covered in this chapter",
+    "Complete the practical exercises",
+    "Review the additional resources for deeper understanding",
+    "Prepare for the next chapter by reviewing key concepts"
+  ]
 }
 
-Make the content comprehensive and educational. Include practical examples relevant to ${subject}.
-For videoUrl, use a real YouTube URL related to the topic if possible.
+IMPORTANT REQUIREMENTS:
+1. Make all content specific to ${subject} and ${chapterTitle}
+2. Ensure content is appropriate for ${difficulty} level
+3. Include realistic and educational code examples
+4. Make the mainContent substantial (at least 500 words)
+5. Include practical exercises that reinforce learning
+6. Provide relevant additional resources
+7. Use a real YouTube URL if possible, otherwise use placeholder
+8. Make learning objectives specific and measurable
+
 Return ONLY the JSON object, no additional text or formatting.`;
 
     const response = await this.makeRequest(prompt);
     
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
-      return JSON.parse(cleanedResponse);
+      const parsedData = JSON.parse(cleanedResponse);
+      
+      if (!this.validateCourseContent(parsedData)) {
+        throw new Error('Invalid course content data structure received from AI service.');
+      }
+      
+      return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
-      throw new Error('Failed to parse course content response. Please try again.');
+      console.error('Raw response:', response);
+      throw new Error('Failed to parse course content response. The AI service returned invalid data. Please try again.');
     }
   }
 
@@ -217,17 +397,22 @@ Please respond with ONLY a valid JSON object in this exact format:
 {
   "chapterId": "chapter-quiz",
   "title": "Quiz: ${chapterTitle}",
-  "description": "Test your understanding of ${chapterTitle}",
-  "timeLimit": 300,
+  "description": "Test your understanding of ${chapterTitle} concepts in ${subject}",
+  "timeLimit": 600,
   "passingScore": 70,
   "questions": [
     {
       "id": "q1",
       "type": "multiple-choice",
-      "question": "What is the main concept of this chapter?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": 0,
-      "explanation": "Detailed explanation of why this is the correct answer",
+      "question": "What is the main purpose of ${chapterTitle} in ${subject}?",
+      "options": [
+        "Option A - Incorrect but plausible answer",
+        "Option B - Correct answer with clear explanation",
+        "Option C - Incorrect but related concept",
+        "Option D - Clearly incorrect option"
+      ],
+      "correctAnswer": 1,
+      "explanation": "The correct answer is B because ${chapterTitle} serves this specific purpose in ${subject}. This is important because it helps developers understand the fundamental concepts and apply them effectively.",
       "difficulty": "easy",
       "points": 10
     }
@@ -236,18 +421,43 @@ Please respond with ONLY a valid JSON object in this exact format:
   "totalPoints": 100
 }
 
-Generate exactly 10 questions with varying difficulty (3 easy, 4 medium, 3 hard). Mix different types of questions (conceptual, practical, application-based) relevant to ${chapterTitle} in ${subject}.
-correctAnswer should be the index (0-3) of the correct option.
+IMPORTANT REQUIREMENTS:
+1. Generate exactly 10 questions with varying difficulty:
+   - 3 easy questions (10 points each)
+   - 4 medium questions (10 points each)  
+   - 3 hard questions (10 points each)
+2. Each question must have exactly 4 options
+3. correctAnswer must be the index (0-3) of the correct option
+4. Include detailed explanations for each answer
+5. Make questions specific to ${chapterTitle} and ${subject}
+6. Ensure questions are appropriate for ${difficulty} level
+7. Mix different types of questions: conceptual, practical, application-based
+8. Make incorrect options plausible but clearly wrong
+9. Set timeLimit to 600 seconds (10 minutes)
+10. Set passingScore to 70%
+
 Return ONLY the JSON object, no additional text or formatting.`;
 
     const response = await this.makeRequest(prompt);
     
     try {
       const cleanedResponse = this.cleanJsonResponse(response);
-      return JSON.parse(cleanedResponse);
+      const parsedData = JSON.parse(cleanedResponse);
+      
+      if (!this.validateQuizData(parsedData)) {
+        throw new Error('Invalid quiz data structure received from AI service.');
+      }
+      
+      // Ensure we have exactly 10 questions
+      if (parsedData.questions.length !== 10) {
+        throw new Error('Quiz must contain exactly 10 questions.');
+      }
+      
+      return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
-      throw new Error('Failed to parse quiz response. Please try again.');
+      console.error('Raw response:', response);
+      throw new Error('Failed to parse quiz response. The AI service returned invalid data. Please try again.');
     }
   }
 }
