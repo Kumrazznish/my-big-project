@@ -147,11 +147,6 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     setGenerationProgress({ current: 0, total: roadmap.chapters.length * 2, currentChapter: '' });
     
     try {
-      const rateLimitStatus = geminiService.getRateLimitStatus();
-      if (!rateLimitStatus.canMakeRequest) {
-        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
-      }
-      
       const courseChapters = [];
       
       // Generate detailed content and quiz for each chapter
@@ -172,8 +167,8 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           difficulty
         );
         
-        // Wait between requests to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Shorter wait between requests since we have better rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Update progress for quiz generation
         setGenerationProgress({ 
@@ -199,7 +194,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         
         // Wait between chapters
         if (i < roadmap.chapters.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 6000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
       

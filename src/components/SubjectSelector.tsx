@@ -190,7 +190,13 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
   const [selectedTimeCommitment, setSelectedTimeCommitment] = useState<string>('');
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
-  const [rateLimitStatus, setRateLimitStatus] = useState({ canMakeRequest: true, waitTime: 0, requestsRemaining: 15 });
+  const [rateLimitStatus, setRateLimitStatus] = useState({ 
+    canMakeRequest: true, 
+    waitTime: 0, 
+    requestsRemaining: 30,
+    activeKeys: 0,
+    keyStatuses: []
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   // Check rate limit status periodically
@@ -727,13 +733,19 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
           )}
           
           {/* Rate limit indicator */}
-          {!rateLimitStatus.canMakeRequest && (
-            <div className={`mt-4 text-center text-sm transition-colors ${
-              theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
-            }`}>
-              Rate limit reached. Please wait {Math.ceil(rateLimitStatus.waitTime / 1000)} seconds.
+          <div className={`mt-4 text-center text-sm transition-colors ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>
+            <div className="flex items-center justify-center space-x-4">
+              <span>API Keys: {rateLimitStatus.activeKeys}</span>
+              <span>Requests Available: {rateLimitStatus.requestsRemaining}</span>
+              {!rateLimitStatus.canMakeRequest && (
+                <span className="text-orange-500">
+                  Wait: {Math.ceil(rateLimitStatus.waitTime / 1000)}s
+                </span>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
