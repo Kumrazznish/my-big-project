@@ -115,6 +115,10 @@ const AppContent: React.FC = () => {
   };
 
   const handleStartNewLearning = () => {
+    setSelectedSubject('');
+    setSelectedDifficulty('');
+    setSelectedChapter(null);
+    setCurrentRoadmapId('');
     setCurrentState('selection');
   };
 
