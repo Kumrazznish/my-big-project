@@ -274,22 +274,22 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   };
 
   const handleChapterClick = (chapter: Chapter) => {
-    if (detailedCourse) {
-      const courseChapter = detailedCourse.chapters.find(c => c.id === chapter.id);
-      if (courseChapter) {
-        // Create enhanced chapter object with course content
-        const enhancedChapter = {
-          ...chapter,
-          courseContent: courseChapter.content,
-          quiz: courseChapter.quiz
-        };
-        setSelectedChapter(chapter.id);
-        onChapterSelect(enhancedChapter);
-      }
-    } else {
-      // If no detailed course, just pass the basic chapter
+    // Only allow chapter selection if detailed course is generated
+    if (!detailedCourse) {
+      console.log('Detailed course not generated yet. Please generate the course first.');
+      return;
+    }
+    
+    const courseChapter = detailedCourse.chapters.find(c => c.id === chapter.id);
+    if (courseChapter) {
+      // Create enhanced chapter object with course content
+      const enhancedChapter = {
+        ...chapter,
+        courseContent: courseChapter.content,
+        quiz: courseChapter.quiz
+      };
       setSelectedChapter(chapter.id);
-      onChapterSelect(chapter);
+      onChapterSelect(enhancedChapter);
     }
   };
 
@@ -744,6 +744,11 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                       <div className={`w-full max-w-lg ${isLeft ? 'mr-12' : 'ml-12'}`}>
                         <div
                           className={`group relative backdrop-blur-xl border-2 rounded-3xl p-8 cursor-pointer transition-all duration-500 hover:scale-105 ${
+                            !detailedCourse
+                              ? theme === 'dark'
+                                ? 'border-gray-600 bg-slate-800/30 opacity-60 cursor-not-allowed'
+                                : 'border-gray-300 bg-gray-100 opacity-60 cursor-not-allowed'
+                              : 
                             selectedChapter === chapter.id
                               ? theme === 'dark'
                                 ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
@@ -756,7 +761,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                                   ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
                                   : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                           }`}
-                          onClick={() => handleChapterClick(chapter)}
+                          onClick={() => detailedCourse && handleChapterClick(chapter)}
                         >
                           {/* Status Badges */}
                           <div className="absolute top-6 right-6 flex items-center space-x-2">
@@ -851,12 +856,19 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                             </div>
 
                             {/* Content Status */}
-                            {hasDetailedContent && (
+                            {hasDetailedContent ? (
                               <div className={`flex items-center space-x-3 ${
                                 theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                               }`}>
                                 <Video className="w-5 h-5" />
                                 <span className="font-medium">Enhanced content & quiz available</span>
+                              </div>
+                            ) : (
+                              <div className={`flex items-center space-x-3 ${
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
+                                <Lock className="w-5 h-5" />
+                                <span className="font-medium">Generate course to unlock</span>
                               </div>
                             )}
                           </div>

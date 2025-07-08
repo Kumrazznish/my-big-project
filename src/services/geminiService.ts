@@ -305,7 +305,13 @@ export class GeminiService {
 
       const content = candidate.content.parts[0].text;
       if (!content || content.trim().length === 0) {
-        throw new Error('EMPTY_CONTENT: Empty response from AI service');
+        console.warn('Empty content received, retrying...');
+        if (attempt < maxAttempts) {
+          const delay = 2000 * attempt;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.makeRequestWithKey(prompt, apiKey, attempt + 1);
+        }
+        throw new Error('EMPTY_CONTENT: Empty response from AI service after retries');
       }
 
       rateLimiter.recordSuccess(apiKey);
@@ -502,6 +508,25 @@ export class GeminiService {
   async generateRoadmap(subject: string, difficulty: string): Promise<any> {
     console.log('Generating roadmap for:', { subject, difficulty });
     
+    // Add retry logic for roadmap generation
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      try {
+        return await this.generateRoadmapInternal(subject, difficulty);
+      } catch (error) {
+        attempt++;
+        console.error(`Roadmap generation attempt ${attempt} failed:`, error);
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 3000 * attempt));
+      }
+    }
+  }
+
+  private async generateRoadmapInternal(subject: string, difficulty: string): Promise<any> {
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
     const prompt = `You are an expert curriculum designer. Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level.
@@ -720,6 +745,24 @@ IMPORTANT: Return ONLY a valid JSON object with NO additional text, explanations
   }
 
   async generateCourseContent(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      try {
+        return await this.generateCourseContentInternal(chapterTitle, subject, difficulty);
+      } catch (error) {
+        attempt++;
+        console.error(`Course content generation attempt ${attempt} failed:`, error);
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
+    }
+  }
+
+  private async generateCourseContentInternal(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
     // Get a proper YouTube video ID for the subject and chapter
@@ -838,6 +881,24 @@ IMPORTANT: Return ONLY a valid JSON object with NO additional text, explanations
   }
 
   async generateQuiz(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      try {
+        return await this.generateQuizInternal(chapterTitle, subject, difficulty);
+      } catch (error) {
+        attempt++;
+        console.error(`Quiz generation attempt ${attempt} failed:`, error);
+        if (attempt >= maxRetries) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
+    }
+  }
+
+  private async generateQuizInternal(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
     const prompt = `Create a comprehensive quiz for "${chapterTitle}" in ${subject} at ${difficulty} level.
 
 IMPORTANT: Return ONLY a valid JSON object with NO additional text, explanations, or markdown formatting.
