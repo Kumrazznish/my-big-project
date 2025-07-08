@@ -9,6 +9,7 @@ import Navigation from './components/Navigation';
 import HistoryPage from './components/HistoryPage';
 import SubjectSelector from './components/SubjectSelector';
 import RoadmapView from './components/RoadmapView';
+import DetailedCoursePage from './components/DetailedCoursePage';
 import ChapterDetails from './components/ChapterDetails';
 import QuizView from './components/QuizView';
 import { Chapter, QuizResult } from './types';
@@ -21,7 +22,7 @@ if (!CLERK_PUBLISHABLE_KEY) {
   throw new Error("Missing Publishable Key")
 }
 
-type AppState = 'dashboard' | 'history' | 'selection' | 'roadmap' | 'chapter' | 'quiz';
+type AppState = 'dashboard' | 'history' | 'selection' | 'roadmap' | 'detailed-course' | 'chapter' | 'quiz';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ const AppContent: React.FC = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [currentRoadmapId, setCurrentRoadmapId] = useState<string>('');
+  const [detailedCourse, setDetailedCourse] = useState<any>(null);
 
   const handleSubjectSelect = async (subject: string, difficulty: string, learningStyle: string, timeCommitment: string, goals: string[]) => {
     console.log('Subject selected:', { subject, difficulty, learningStyle, timeCommitment, goals });
@@ -50,6 +52,25 @@ const AppContent: React.FC = () => {
     
     console.log('Navigating to roadmap view...');
     setCurrentState('roadmap');
+  };
+
+  const handleDetailedCourseGenerated = (courseData: any) => {
+    console.log('Detailed course generated:', courseData);
+    setDetailedCourse(courseData);
+    setCurrentState('detailed-course');
+  };
+
+  const handleChapterCompleted = (chapterId: string) => {
+    if (detailedCourse) {
+      const updatedCourse = {
+        ...detailedCourse,
+        chapters: detailedCourse.chapters.map((chapter: any) =>
+          chapter.id === chapterId ? { ...chapter, completed: true } : chapter
+        )
+      };
+      setDetailedCourse(updatedCourse);
+      localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(updatedCourse));
+    }
   };
 
   const handleChapterSelect = (chapter: Chapter) => {
@@ -106,6 +127,12 @@ const AppContent: React.FC = () => {
     setSelectedChapter(null);
   };
 
+  const handleBackToDetailedCourse = () => {
+    console.log('Going back to detailed course');
+    setCurrentState('detailed-course');
+    setSelectedChapter(null);
+  };
+
   const handleBackToChapter = () => {
     console.log('Going back to chapter');
     setCurrentState('chapter');
@@ -134,7 +161,7 @@ const AppContent: React.FC = () => {
   };
 
   // Show navigation for authenticated users
-  const showNavigation = ['dashboard', 'history', 'selection', 'roadmap', 'chapter', 'quiz'].includes(currentState);
+  const showNavigation = ['dashboard', 'history', 'selection', 'roadmap', 'detailed-course', 'chapter', 'quiz'].includes(currentState);
 
   console.log('Current state:', currentState);
   console.log('User:', user);
@@ -216,6 +243,20 @@ const AppContent: React.FC = () => {
             difficulty={selectedDifficulty}
             onBack={handleBackToSelection}
             onChapterSelect={handleChapterSelect}
+            onDetailedCourseGenerated={handleDetailedCourseGenerated}
+          />
+        </div>
+      )}
+      
+      {currentState === 'detailed-course' && detailedCourse && (
+        <div className="min-h-screen">
+          <DetailedCoursePage
+            detailedCourse={detailedCourse}
+            subject={selectedSubject}
+            difficulty={selectedDifficulty}
+            onBack={() => setCurrentState('roadmap')}
+            onChapterComplete={handleChapterCompleted}
+            onQuizStart={handleQuizStart}
           />
         </div>
       )}
@@ -226,7 +267,7 @@ const AppContent: React.FC = () => {
             chapter={selectedChapter}
             subject={selectedSubject}
             difficulty={selectedDifficulty}
-            onBack={handleBackToRoadmap}
+            onBack={detailedCourse ? handleBackToDetailedCourse : handleBackToRoadmap}
             onQuizStart={handleQuizStart}
           />
         </div>

@@ -53,9 +53,10 @@ interface RoadmapViewProps {
   difficulty: string;
   onBack: () => void;
   onChapterSelect: (chapter: Chapter) => void;
+  onDetailedCourseGenerated: (courseData: any) => void;
 }
 
-const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, onChapterSelect }) => {
+const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, onChapterSelect, onDetailedCourseGenerated }) => {
   const { theme } = useTheme();
   const { user } = useAuth();
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
@@ -246,6 +247,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       };
       
       setDetailedCourse(detailedCourseData);
+      
+      // Notify parent component
+      onDetailedCourseGenerated(detailedCourseData);
       
       // Save detailed course to localStorage for persistence
       localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(detailedCourseData));
