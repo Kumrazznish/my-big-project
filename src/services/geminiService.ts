@@ -752,16 +752,16 @@ Return ONLY valid JSON in this exact format. Ensure all fields are fully populat
     ],
     "summary": "In this chapter, you have gained a comprehensive understanding of ${chapterTitle} in ${subject}. You are now equipped with the theoretical knowledge and practical skills to confidently apply ${chapterTitle} in your development work, troubleshoot issues, and leverage its full potential in building robust ${subject} applications."
   },
-  "videoId": \`https://www.youtube.com/watch?v=$$${videoId}\`,
+  "videoId": \`https://www.youtube.com/watch?v=$$$${videoId}\`,
   "codeExamples": [
     {
       "title": "Basic ${chapterTitle} Usage Example",
-      "code": "// This is a simple example demonstrating the core usage of ${chapterTitle} in ${subject}.\n// It illustrates the basic syntax and a straightforward application.\n\nfunction calculateSum(a, b) {\n  // Using ${chapterTitle} principle: simple addition\n  return a + b;\n}\n\nlet num1 = 5;\nlet num2 = 10;\nlet result = calculateSum(num1, num2);\n\nconsole.log(\`The sum of \${num1} and \${num2} is: \${result}\`);\n\n// Another basic use case for ${chapterTitle}\nconst greeting = \`Hello from \${subject} and \${chapterTitle}!\`;\nconsole.log(greeting);",
+      "code": "// This is a simple example demonstrating the core usage of ${chapterTitle} in ${subject}.\n// It illustrates the basic syntax and a straightforward application.\n\nfunction calculateSum(a, b) {\n  // Using ${chapterTitle} principle: simple addition\n  return a + b;\n}\n\nlet num1 = 5;\nlet num2 = 10;\nlet result = calculateSum(num1, num2);\n\nconsole.log(\`The sum of ${num1} and ${num2} is: ${result}\`);\n\n// Another basic use case for ${chapterTitle}\nconst greeting = \`Hello from ${subject} and ${chapterTitle}!\`;\nconsole.log(greeting);",
       "explanation": "This example showcases the fundamental syntax and purpose of ${chapterTitle}. The `calculateSum` function demonstrates a basic operation, while the `greeting` constant illustrates string interpolation, both directly related to core concepts discussed in this chapter about ${subject}."
     },
     {
       "title": "Advanced ${chapterTitle} Pattern/Implementation",
-      "code": "// This example demonstrates a more advanced pattern or practical implementation of ${chapterTitle}.\n// It shows how ${chapterTitle} can be used in a more complex scenario within ${subject}.\n\nclass UserManager {\n  constructor() {\n    this.users = [];\n  }\n\n  addUser(name, email) {\n    const newUser = { id: this.users.length + 1, name, email };\n    this.users.push(newUser);\n    console.log(\`User \${name} added using ${chapterTitle} principles.\`);\n  }\n\n  findUser(id) {\n    // Advanced usage of array methods combined with ${chapterTitle} logic\n    return this.users.find(user => user.id === id);\n  }\n\n  listAllUsers() {\n    console.log(\`Current users (${chapterTitle} context):\`);\n    this.users.forEach(user => console.log(`- ID: \${user.id}, Name: \${user.name}`));\n  }\n}\n\nconst userManager = new UserManager();\nuserManager.addUser('Alice', 'alice@example.com');\nuserManager.addUser('Bob', 'bob@example.com');\nuserManager.listAllUsers();\nconst foundUser = userManager.findUser(1);\nconsole.log('Found user:', foundUser);\n",
+      "code": "// This example demonstrates a more advanced pattern or practical implementation of ${chapterTitle}.\n// It shows how ${chapterTitle} can be used in a more complex scenario within ${subject}.\n\nclass UserManager {\n  constructor() {\n    this.users = [];\n  }\n\n  addUser(name, email) {\n    const newUser = { id: this.users.length + 1, name, email };\n    this.users.push(newUser);\n    console.log(`User ${name} added using ${chapterTitle} principles.`);\n  }\n\n  findUser(id) {\n    // Advanced usage of array methods combined with ${chapterTitle} logic\n    return this.users.find(user => user.id === id);\n  }\n\n  listAllUsers() {\n    console.log(`Current users (${chapterTitle} context):`);\n    this.users.forEach(user => console.log(`- ID: ${user.id}, Name: ${user.name}`));\n  }\n}\n\nconst userManager = new UserManager();\nuserManager.addUser('Alice', 'alice@example.com');\nuserManager.addUser('Bob', 'bob@example.com');\nuserManager.listAllUsers();\nconst foundUser = userManager.findUser(1);\nconsole.log('Found user:', foundUser);\n",
       "explanation": "This advanced example illustrates how ${chapterTitle} principles are applied in a class-based structure for managing user data. It demonstrates object instantiation, array manipulation, and method invocation, highlighting practical object-oriented design and data handling within ${subject} using concepts from this chapter."
     }
   ],
@@ -869,7 +869,7 @@ Return ONLY valid JSON in this exact format. Ensure all fields are fully populat
         "To handle errors gracefully in a program."
       ],
       "correctAnswer": 2,
-      "explanation": "The correct answer is C. Loops (like `for` or `while` loops) are fundamental control flow structures in programming languages like ${subject}. Their primary purpose is to automate repetitive tasks by executing a specific block of code multiple times, based on a defined condition. This significantly reduces code duplication and improves efficiency.",
+      "explanation": "The correct answer is C. Loops (like \`for\` or \`while\` loops) are fundamental control flow structures in programming languages like ${subject}. Their primary purpose is to automate repetitive tasks by executing a specific block of code multiple times, based on a defined condition. This significantly reduces code duplication and improves efficiency.",
       "difficulty": "easy",
       "points": 10
     },
