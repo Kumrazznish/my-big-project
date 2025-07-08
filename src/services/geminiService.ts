@@ -442,7 +442,9 @@ export class GeminiService {
 
     // Construct the detailed prompt for the Gemini AI.
     // It explicitly requests JSON in a specific format to guide the AI's output.
-    const prompt = `Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level, tailored to the following user learning preferences:
+  // ... (previous code) ...
+
+const prompt = `Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level, tailored to the following user learning preferences:
 - Learning Style: ${preferences.learningStyle || 'mixed'}
 - Time Commitment: ${preferences.timeCommitment || 'regular'}
 - Goals: ${preferences.goals?.join(', ') || 'general learning'}
@@ -629,11 +631,10 @@ Requirements for the generated JSON:
 - Chapter difficulties should progressively increase, starting with "beginner" and moving towards "intermediate" and "advanced".
 - "duration" and "estimatedHours" for each chapter must be realistic and appropriate for the content.
 - "keyTopics", "skills", and "practicalProjects" arrays within each chapter must contain at least 3 items, be highly specific, actionable, and directly relevant to the chapter's title and the overall subject/difficulty.
-- The "completed" field for all chapters must be `false`.
+- The "completed" field for all chapters must be \`false\`.
 - The overall "totalDuration" and "estimatedHours" should be a plausible sum reflecting the commitment for all chapters.
 - **Important:** Ensure the output is ONLY the JSON object, wrapped in a single markdown JSON block (\`\`\`json ... \`\`\`), with no extra text or markdown outside these specific boundaries.
 `;
-
     // Make the API request using the private helper method.
     const response = await this.makeRequest(prompt);
 
