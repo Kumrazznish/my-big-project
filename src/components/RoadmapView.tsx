@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { geminiService } from '../services/geminiService';
 import { userService } from '../services/userService';
-import { CheckCircle, Circle, Lock, Play, Book, Award, Clock, ArrowLeft, Zap, Target, Users, TrendingUp, Star, ChevronRight, Sparkles, Brain, Code, Palette, Calculator, Globe, Lightbulb, BookOpen, Trophy, Timer, BarChart3, Rocket, Shield, FileText, Video, AlertCircle } from 'lucide-react';
+import { CheckCircle, Circle, Play, Book, Award, Clock, ArrowLeft, Zap, Target, Users, TrendingUp, Star, ChevronRight, Sparkles, Brain, Code, Palette, Calculator, Globe, Lightbulb, BookOpen, Trophy, Timer, BarChart3, Rocket, Shield, FileText, Video, AlertCircle, Youtube, ExternalLink, Download, Layers, Cpu, Database, Smartphone, Camera, Headphones, Monitor, Wifi, Settings, Lock } from 'lucide-react';
 
 interface Chapter {
   id: string;
@@ -18,6 +18,8 @@ interface Chapter {
   skills: string[];
   practicalProjects: string[];
   resources: number;
+  courseContent?: any;
+  quiz?: any;
 }
 
 interface Roadmap {
@@ -65,14 +67,19 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [currentRoadmapId, setCurrentRoadmapId] = useState<string>('');
   const [courseProgress, setCourseProgress] = useState<{ [key: string]: boolean }>({});
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0, currentChapter: '' });
 
   const maxRetries = 3;
 
   useEffect(() => {
     console.log('RoadmapView mounted with:', { subject, difficulty });
     
+    // Generate unique roadmap ID
+    const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setCurrentRoadmapId(roadmapId);
+    
     // Load existing detailed course from localStorage if available
-    const savedCourse = localStorage.getItem(`detailed_course_${currentRoadmapId}`);
+    const savedCourse = localStorage.getItem(`detailed_course_${roadmapId}`);
     if (savedCourse) {
       try {
         const parsedCourse = JSON.parse(savedCourse);
@@ -83,7 +90,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     }
     
     generateRoadmap();
-  }, [subject, difficulty, currentRoadmapId]);
+  }, [subject, difficulty]);
 
   const generateRoadmap = async () => {
     console.log('Generating roadmap for:', { subject, difficulty });
@@ -91,7 +98,6 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     setError(null);
     
     try {
-      // Check rate limit status before making request
       const rateLimitStatus = geminiService.getRateLimitStatus();
       if (!rateLimitStatus.canMakeRequest) {
         throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
@@ -101,10 +107,6 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       console.log('Roadmap generated successfully:', roadmapData);
       setRoadmap(roadmapData);
       
-      // Generate unique roadmap ID
-      const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      setCurrentRoadmapId(roadmapId);
-      
       // Save roadmap to user's history if logged in
       if (user) {
         try {
@@ -112,7 +114,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           await userService.addToHistory(user._id, {
             subject,
             difficulty,
-            roadmapId,
+            roadmapId: currentRoadmapId,
             chapterProgress: roadmapData.chapters.map((chapter: Chapter) => ({
               chapterId: chapter.id,
               completed: false
@@ -131,7 +133,6 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       setRetryCount(0);
     } catch (error) {
       console.error('Failed to generate roadmap:', error);
-      console.error('Error details:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate roadmap');
     } finally {
       setLoading(false);
@@ -143,9 +144,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     
     setGeneratingCourse(true);
     setError(null);
+    setGenerationProgress({ current: 0, total: roadmap.chapters.length * 2, currentChapter: '' });
     
     try {
-      // Check rate limit before starting course generation
       const rateLimitStatus = geminiService.getRateLimitStatus();
       if (!rateLimitStatus.canMakeRequest) {
         throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
@@ -157,12 +158,29 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       for (let i = 0; i < roadmap.chapters.length; i++) {
         const chapter = roadmap.chapters[i];
         
+        // Update progress for course content generation
+        setGenerationProgress({ 
+          current: i * 2 + 1, 
+          total: roadmap.chapters.length * 2, 
+          currentChapter: `Generating content for: ${chapter.title}` 
+        });
+        
         // Generate course content
         const courseContent = await geminiService.generateCourseContent(
           chapter.title, 
           subject, 
           difficulty
         );
+        
+        // Wait between requests to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        // Update progress for quiz generation
+        setGenerationProgress({ 
+          current: i * 2 + 2, 
+          total: roadmap.chapters.length * 2, 
+          currentChapter: `Generating quiz for: ${chapter.title}` 
+        });
         
         // Generate quiz
         const quiz = await geminiService.generateQuiz(
@@ -179,9 +197,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           completed: false
         });
         
-        // Longer delay between requests to respect rate limits
+        // Wait between chapters
         if (i < roadmap.chapters.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, 6000));
         }
       }
       
@@ -204,6 +222,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       setError(error instanceof Error ? error.message : 'Failed to generate detailed course');
     } finally {
       setGeneratingCourse(false);
+      setGenerationProgress({ current: 0, total: 0, currentChapter: '' });
     }
   };
 
@@ -281,6 +300,11 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     if (subjectLower.includes('data') || subjectLower.includes('ai')) return Brain;
     if (subjectLower.includes('web')) return Globe;
     if (subjectLower.includes('math')) return Calculator;
+    if (subjectLower.includes('mobile')) return Smartphone;
+    if (subjectLower.includes('database')) return Database;
+    if (subjectLower.includes('network')) return Wifi;
+    if (subjectLower.includes('security')) return Lock;
+    if (subjectLower.includes('system')) return Cpu;
     return BookOpen;
   };
 
@@ -294,7 +318,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   };
 
   const getChapterIcon = (index: number) => {
-    const icons = [BookOpen, Code, Lightbulb, Target, Rocket, Shield, Trophy, BarChart3, Zap, Brain, Star, Award];
+    const icons = [BookOpen, Code, Lightbulb, Target, Rocket, Shield, Trophy, BarChart3, Zap, Brain, Star, Award, Layers, Monitor, Settings, Database, Wifi, Camera, Headphones, Download];
     return icons[index % icons.length];
   };
 
@@ -306,29 +330,29 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
       }`}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-6">
+          <div className="text-center space-y-8">
             <div className="relative">
-              <div className="w-24 h-24 border-4 border-cyan-500/30 rounded-full animate-spin">
-                <div className="absolute top-0 left-0 w-6 h-6 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full"></div>
+              <div className="w-32 h-32 border-4 border-cyan-500/30 rounded-full animate-spin">
+                <div className="absolute top-0 left-0 w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full"></div>
               </div>
-              <Brain className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-cyan-500" />
+              <Brain className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 text-cyan-500" />
             </div>
             <div>
-              <h3 className={`text-2xl font-bold mb-2 transition-colors ${
+              <h3 className={`text-3xl font-bold mb-4 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Generating Your Personalized Roadmap
               </h3>
-              <p className={`transition-colors ${
+              <p className={`text-lg transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
-                AI is analyzing your preferences and creating the perfect learning path...
+                AI is analyzing your preferences and creating the perfect learning path for {subject}...
               </p>
             </div>
-            <div className="flex items-center justify-center space-x-2">
-              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-2 h-2 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-3 h-3 bg-pink-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
             </div>
           </div>
         </div>
@@ -344,36 +368,36 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
       }`}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className={`max-w-md mx-4 p-8 rounded-3xl border text-center transition-colors ${
+          <div className={`max-w-lg mx-4 p-10 rounded-3xl border text-center transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-red-500/30 backdrop-blur-xl' 
               : 'bg-white/80 border-red-200 backdrop-blur-xl'
           }`}>
-            <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-8">
+              <AlertCircle className="w-10 h-10 text-white" />
             </div>
-            <h3 className={`text-xl font-bold mb-4 transition-colors ${
+            <h3 className={`text-2xl font-bold mb-6 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               Oops! Something went wrong
             </h3>
-            <p className={`mb-6 transition-colors ${
+            <p className={`mb-8 text-lg transition-colors ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>
               {error}
             </p>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {retryCount < maxRetries && (
                 <button
                   onClick={handleRetry}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold text-lg"
                 >
                   Try Again ({retryCount + 1}/{maxRetries})
                 </button>
               )}
               <button
                 onClick={onBack}
-                className={`w-full border px-6 py-3 rounded-xl transition-all duration-300 font-semibold ${
+                className={`w-full border px-8 py-4 rounded-xl transition-all duration-300 font-semibold text-lg ${
                   theme === 'dark' 
                     ? 'border-gray-600 text-gray-300 hover:border-gray-400 hover:bg-white/5' 
                     : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
@@ -405,52 +429,52 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       <div className={`backdrop-blur-xl border-b sticky top-0 z-10 transition-colors ${
         theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-200'
       }`}>
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           <button
             onClick={onBack}
-            className={`flex items-center space-x-2 mb-6 px-4 py-2 rounded-xl transition-all duration-300 ${
+            className={`flex items-center space-x-3 mb-8 px-6 py-3 rounded-xl transition-all duration-300 ${
               theme === 'dark' 
                 ? 'text-gray-300 hover:text-white hover:bg-slate-800/50' 
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
             }`}
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to Selection</span>
+            <ArrowLeft className="w-6 h-6" />
+            <span className="font-semibold text-lg">Back to Selection</span>
           </button>
 
           <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-6">
-              <div className={`w-20 h-20 rounded-3xl bg-gradient-to-r ${getDifficultyColor(roadmap.difficulty)} flex items-center justify-center shadow-2xl`}>
-                <SubjectIcon className="w-10 h-10 text-white" />
+            <div className="flex items-start space-x-8">
+              <div className={`w-24 h-24 rounded-3xl bg-gradient-to-r ${getDifficultyColor(roadmap.difficulty)} flex items-center justify-center shadow-2xl`}>
+                <SubjectIcon className="w-12 h-12 text-white" />
               </div>
               <div>
-                <h1 className={`text-4xl font-bold mb-2 transition-colors ${
+                <h1 className={`text-5xl font-bold mb-4 transition-colors ${
                   theme === 'dark' 
                     ? 'bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent' 
                     : 'text-gray-900'
                 }`}>
                   {roadmap.subject}
                 </h1>
-                <p className={`text-xl mb-4 transition-colors ${
+                <p className={`text-xl mb-6 max-w-2xl transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
                   {roadmap.description}
                 </p>
-                <div className="flex items-center space-x-6">
-                  <div className={`inline-flex px-4 py-2 rounded-xl bg-gradient-to-r ${getDifficultyColor(roadmap.difficulty)} text-white font-semibold`}>
+                <div className="flex items-center space-x-8">
+                  <div className={`inline-flex px-6 py-3 rounded-xl bg-gradient-to-r ${getDifficultyColor(roadmap.difficulty)} text-white font-bold text-lg`}>
                     {roadmap.difficulty.charAt(0).toUpperCase() + roadmap.difficulty.slice(1)}
                   </div>
-                  <div className={`flex items-center space-x-2 transition-colors ${
+                  <div className={`flex items-center space-x-3 transition-colors ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    <Clock className="w-5 h-5" />
-                    <span>{roadmap.totalDuration}</span>
+                    <Clock className="w-6 h-6" />
+                    <span className="text-lg font-medium">{roadmap.totalDuration}</span>
                   </div>
-                  <div className={`flex items-center space-x-2 transition-colors ${
+                  <div className={`flex items-center space-x-3 transition-colors ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    <Timer className="w-5 h-5" />
-                    <span>{roadmap.estimatedHours}</span>
+                    <Timer className="w-6 h-6" />
+                    <span className="text-lg font-medium">{roadmap.estimatedHours}</span>
                   </div>
                 </div>
               </div>
@@ -458,14 +482,14 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
 
             {/* Progress Circle */}
             <div className="text-center">
-              <div className="relative w-24 h-24">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 100 100">
+              <div className="relative w-32 h-32">
+                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
                   <circle
                     cx="50"
                     cy="50"
                     r="40"
                     stroke="currentColor"
-                    strokeWidth="8"
+                    strokeWidth="6"
                     fill="transparent"
                     className={theme === 'dark' ? 'text-gray-700' : 'text-gray-200'}
                   />
@@ -474,7 +498,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                     cy="50"
                     r="40"
                     stroke="url(#progress-gradient)"
-                    strokeWidth="8"
+                    strokeWidth="6"
                     fill="transparent"
                     strokeDasharray={`${2 * Math.PI * 40}`}
                     strokeDashoffset={`${2 * Math.PI * 40 * (1 - progress / 100)}`}
@@ -484,12 +508,12 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className={`text-2xl font-bold transition-colors ${
+                    <div className={`text-3xl font-bold transition-colors ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
                       {Math.round(progress)}%
                     </div>
-                    <div className={`text-xs transition-colors ${
+                    <div className={`text-sm transition-colors ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                     }`}>
                       Complete
@@ -506,23 +530,23 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         {/* Course Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Prerequisites */}
-          <div className={`backdrop-blur-xl border rounded-3xl p-6 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-8 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h3 className={`text-lg font-bold mb-4 flex items-center transition-colors ${
+            <h3 className={`text-xl font-bold mb-6 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <Shield className="w-5 h-5 mr-2 text-blue-500" />
+              <Shield className="w-6 h-6 mr-3 text-blue-500" />
               Prerequisites
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {roadmap.prerequisites.map((prereq, index) => (
-                <div key={index} className={`flex items-center text-sm transition-colors ${
+                <div key={index} className={`flex items-center text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                  <CheckCircle className="w-5 h-5 mr-3 text-green-500" />
                   {prereq}
                 </div>
               ))}
@@ -530,23 +554,23 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           </div>
 
           {/* Learning Outcomes */}
-          <div className={`backdrop-blur-xl border rounded-3xl p-6 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-8 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h3 className={`text-lg font-bold mb-4 flex items-center transition-colors ${
+            <h3 className={`text-xl font-bold mb-6 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <Target className="w-5 h-5 mr-2 text-purple-500" />
+              <Target className="w-6 h-6 mr-3 text-purple-500" />
               Learning Outcomes
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {roadmap.learningOutcomes.map((outcome, index) => (
-                <div key={index} className={`flex items-center text-sm transition-colors ${
+                <div key={index} className={`flex items-center text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  <Star className="w-4 h-4 mr-2 text-yellow-500" />
+                  <Star className="w-5 h-5 mr-3 text-yellow-500" />
                   {outcome}
                 </div>
               ))}
@@ -554,42 +578,42 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           </div>
 
           {/* Course Stats */}
-          <div className={`backdrop-blur-xl border rounded-3xl p-6 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-8 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h3 className={`text-lg font-bold mb-4 flex items-center transition-colors ${
+            <h3 className={`text-xl font-bold mb-6 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <BarChart3 className="w-5 h-5 mr-2 text-cyan-500" />
+              <BarChart3 className="w-6 h-6 mr-3 text-cyan-500" />
               Course Stats
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className={`text-sm transition-colors ${
+                <span className={`text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>Chapters</span>
-                <span className="font-bold text-cyan-500">{totalChapters}</span>
+                <span className="font-bold text-cyan-500 text-xl">{totalChapters}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className={`text-sm transition-colors ${
+                <span className={`text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>Completed</span>
-                <span className="font-bold text-green-500">{completedChapters}</span>
+                <span className="font-bold text-green-500 text-xl">{completedChapters}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className={`text-sm transition-colors ${
+                <span className={`text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>Progress</span>
-                <span className="font-bold text-purple-500">{Math.round(progress)}%</span>
+                <span className="font-bold text-purple-500 text-xl">{Math.round(progress)}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className={`text-sm transition-colors ${
+                <span className={`text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>Course Status</span>
-                <span className={`font-bold ${detailedCourse ? 'text-green-500' : 'text-orange-500'}`}>
-                  {detailedCourse ? 'Generated' : 'Basic'}
+                <span className={`font-bold text-xl ${detailedCourse ? 'text-green-500' : 'text-orange-500'}`}>
+                  {detailedCourse ? 'Enhanced' : 'Basic'}
                 </span>
               </div>
             </div>
@@ -597,82 +621,119 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         </div>
 
         {/* Generate Detailed Course Button */}
-        {!detailedCourse && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 text-center transition-colors ${
+        {!detailedCourse && !generatingCourse && (
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 text-center transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <FileText className="w-10 h-10 text-white" />
+            <div className="w-24 h-24 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-8">
+              <Sparkles className="w-12 h-12 text-white" />
             </div>
-            <h3 className={`text-2xl font-bold mb-4 transition-colors ${
+            <h3 className={`text-3xl font-bold mb-6 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              Ready for Detailed Learning?
+              Ready for Enhanced Learning?
             </h3>
-            <p className={`text-lg mb-8 transition-colors ${
+            <p className={`text-xl mb-10 max-w-3xl mx-auto transition-colors ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>
-              Generate comprehensive course content with detailed explanations, code examples, videos, and quizzes for each chapter.
+              Generate comprehensive course content with detailed explanations, interactive code examples, 
+              YouTube video lessons, practical exercises, and challenging quizzes for each chapter.
             </p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+              <div className={`p-6 rounded-2xl transition-colors ${
+                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+              }`}>
+                <Video className="w-8 h-8 text-red-500 mx-auto mb-4" />
+                <h4 className={`font-bold mb-2 transition-colors ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>Video Lessons</h4>
+                <p className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Curated YouTube videos</p>
+              </div>
+              <div className={`p-6 rounded-2xl transition-colors ${
+                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+              }`}>
+                <Code className="w-8 h-8 text-green-500 mx-auto mb-4" />
+                <h4 className={`font-bold mb-2 transition-colors ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>Code Examples</h4>
+                <p className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Interactive coding demos</p>
+              </div>
+              <div className={`p-6 rounded-2xl transition-colors ${
+                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+              }`}>
+                <Award className="w-8 h-8 text-purple-500 mx-auto mb-4" />
+                <h4 className={`font-bold mb-2 transition-colors ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>Smart Quizzes</h4>
+                <p className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Adaptive assessments</p>
+              </div>
+              <div className={`p-6 rounded-2xl transition-colors ${
+                theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
+              }`}>
+                <Target className="w-8 h-8 text-blue-500 mx-auto mb-4" />
+                <h4 className={`font-bold mb-2 transition-colors ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>Exercises</h4>
+                <p className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Hands-on practice</p>
+              </div>
+            </div>
             <button
               onClick={generateDetailedCourse}
-              disabled={generatingCourse}
-              className={`px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center space-x-3 mx-auto ${
-                generatingCourse
-                  ? theme === 'dark'
-                    ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-lg hover:shadow-xl'
-              }`}
+              className="px-12 py-5 rounded-xl font-bold text-xl transition-all duration-300 flex items-center space-x-4 mx-auto bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-2xl hover:shadow-purple-500/25"
             >
-              {generatingCourse ? (
-                <>
-                  <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                  <span>Generating Course...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-6 h-6" />
-                  <span>Generate Detailed Course</span>
-                </>
-              )}
+              <Sparkles className="w-8 h-8" />
+              <span>Generate Enhanced Course</span>
             </button>
-            {generatingCourse && (
-              <p className={`mt-4 text-sm transition-colors ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                This may take a few minutes as we generate comprehensive content for all chapters...
-              </p>
-            )}
           </div>
         )}
 
         {/* Course Generation Progress */}
         {generatingCourse && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <div className="text-center space-y-6">
+            <div className="text-center space-y-8">
               <div className="relative">
-                <div className="w-16 h-16 border-4 border-purple-500/30 rounded-full animate-spin mx-auto">
-                  <div className="absolute top-0 left-0 w-4 h-4 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full"></div>
+                <div className="w-20 h-20 border-4 border-purple-500/30 rounded-full animate-spin mx-auto">
+                  <div className="absolute top-0 left-0 w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full"></div>
                 </div>
-                <Brain className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-6 h-6 text-purple-500" />
+                <Brain className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-purple-500" />
               </div>
               <div>
-                <h3 className={`text-xl font-bold mb-2 transition-colors ${
+                <h3 className={`text-2xl font-bold mb-4 transition-colors ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
                 }`}>
-                  Generating Comprehensive Course Content
+                  Generating Enhanced Course Content
                 </h3>
-                <p className={`transition-colors ${
+                <p className={`text-lg mb-6 transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Creating detailed lessons, examples, and quizzes for each chapter...
+                  {generationProgress.currentChapter}
+                </p>
+                <div className={`w-full rounded-full h-4 mb-4 ${
+                  theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'
+                }`}>
+                  <div 
+                    className="bg-gradient-to-r from-purple-500 to-pink-600 h-4 rounded-full transition-all duration-500"
+                    style={{ width: `${(generationProgress.current / generationProgress.total) * 100}%` }}
+                  ></div>
+                </div>
+                <p className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                }`}>
+                  {generationProgress.current} of {generationProgress.total} steps completed
                 </p>
               </div>
             </div>
@@ -680,12 +741,12 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         )}
 
         {/* Roadmap Timeline */}
-        <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+        <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
           theme === 'dark' 
             ? 'bg-slate-800/50 border-white/10' 
             : 'bg-white/80 border-gray-200'
         }`}>
-          <h2 className={`text-2xl font-bold mb-8 text-center transition-colors ${
+          <h2 className={`text-3xl font-bold mb-12 text-center transition-colors ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
             Your Learning Journey
@@ -697,7 +758,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               theme === 'dark' ? 'bg-gradient-to-b from-cyan-500 to-purple-500' : 'bg-gradient-to-b from-cyan-400 to-purple-400'
             }`}></div>
 
-            <div className="space-y-12">
+            <div className="space-y-16">
               {roadmap.chapters.map((chapter, index) => {
                 const ChapterIcon = getChapterIcon(index);
                 const isLeft = chapter.position === 'left';
@@ -708,18 +769,18 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                   <div key={chapter.id} className="relative">
                     {/* Timeline Node */}
                     <div className="absolute left-1/2 transform -translate-x-1/2 -translate-y-1/2 top-1/2">
-                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-r ${getDifficultyColor(chapter.difficulty)} flex items-center justify-center shadow-2xl border-4 ${
+                      <div className={`w-20 h-20 rounded-3xl bg-gradient-to-r ${getDifficultyColor(chapter.difficulty)} flex items-center justify-center shadow-2xl border-4 ${
                         theme === 'dark' ? 'border-slate-900' : 'border-white'
                       }`}>
-                        <ChapterIcon className="w-8 h-8 text-white" />
+                        <ChapterIcon className="w-10 h-10 text-white" />
                       </div>
                     </div>
 
                     {/* Chapter Card */}
-                    <div className={`flex ${isLeft ? 'justify-start pr-8' : 'justify-end pl-8'}`}>
-                      <div className={`w-full max-w-md ${isLeft ? 'mr-8' : 'ml-8'}`}>
+                    <div className={`flex ${isLeft ? 'justify-start pr-12' : 'justify-end pl-12'}`}>
+                      <div className={`w-full max-w-lg ${isLeft ? 'mr-12' : 'ml-12'}`}>
                         <div
-                          className={`group relative backdrop-blur-xl border-2 rounded-3xl p-6 cursor-pointer transition-all duration-500 hover:scale-105 ${
+                          className={`group relative backdrop-blur-xl border-2 rounded-3xl p-8 cursor-pointer transition-all duration-500 hover:scale-105 ${
                             selectedChapter === chapter.id
                               ? theme === 'dark'
                                 ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
@@ -734,34 +795,34 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                           }`}
                           onClick={() => handleChapterClick(chapter)}
                         >
-                          {/* Status Badge */}
-                          <div className="absolute top-4 right-4 flex items-center space-x-2">
+                          {/* Status Badges */}
+                          <div className="absolute top-6 right-6 flex items-center space-x-2">
                             {hasDetailedContent && (
-                              <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                                <FileText className="w-3 h-3 text-white" />
+                              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                                <Sparkles className="w-4 h-4 text-white" />
                               </div>
                             )}
                             {isCompleted ? (
-                              <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-5 h-5 text-white" />
+                              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                                <CheckCircle className="w-6 h-6 text-white" />
                               </div>
                             ) : (
-                              <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${
+                              <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
                                 theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
                               }`}>
-                                <Circle className="w-4 h-4 text-gray-400" />
+                                <Circle className="w-5 h-5 text-gray-400" />
                               </div>
                             )}
                           </div>
 
-                          <div className="space-y-4">
+                          <div className="space-y-6">
                             <div>
-                              <h3 className={`text-xl font-bold mb-2 pr-16 transition-colors ${
+                              <h3 className={`text-2xl font-bold mb-3 pr-20 transition-colors ${
                                 theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
                                 {chapter.title}
                               </h3>
-                              <p className={`text-sm mb-4 transition-colors ${
+                              <p className={`text-lg mb-6 transition-colors ${
                                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                               }`}>
                                 {chapter.description}
@@ -769,33 +830,33 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                             </div>
 
                             {/* Chapter Details */}
-                            <div className="grid grid-cols-2 gap-4 text-xs">
-                              <div className={`flex items-center space-x-2 transition-colors ${
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className={`flex items-center space-x-3 transition-colors ${
                                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                               }`}>
-                                <Clock className="w-4 h-4" />
-                                <span>{chapter.duration}</span>
+                                <Clock className="w-5 h-5" />
+                                <span className="font-medium">{chapter.duration}</span>
                               </div>
-                              <div className={`flex items-center space-x-2 transition-colors ${
+                              <div className={`flex items-center space-x-3 transition-colors ${
                                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                               }`}>
-                                <Timer className="w-4 h-4" />
-                                <span>{chapter.estimatedHours}</span>
+                                <Timer className="w-5 h-5" />
+                                <span className="font-medium">{chapter.estimatedHours}</span>
                               </div>
                             </div>
 
                             {/* Key Topics */}
                             <div>
-                              <h4 className={`text-sm font-semibold mb-2 transition-colors ${
+                              <h4 className={`font-bold mb-3 transition-colors ${
                                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                               }`}>
                                 Key Topics:
                               </h4>
-                              <div className="flex flex-wrap gap-1">
-                                {chapter.keyTopics.slice(0, 3).map((topic, topicIndex) => (
+                              <div className="flex flex-wrap gap-2">
+                                {chapter.keyTopics.slice(0, 4).map((topic, topicIndex) => (
                                   <span
                                     key={topicIndex}
-                                    className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                    className={`px-3 py-1 rounded-lg text-sm font-medium ${
                                       theme === 'dark' 
                                         ? 'bg-slate-700 text-gray-300' 
                                         : 'bg-gray-100 text-gray-700'
@@ -804,41 +865,41 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                                     {topic}
                                   </span>
                                 ))}
-                                {chapter.keyTopics.length > 3 && (
-                                  <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                {chapter.keyTopics.length > 4 && (
+                                  <span className={`px-3 py-1 rounded-lg text-sm font-medium ${
                                     theme === 'dark' 
                                       ? 'bg-slate-700 text-gray-300' 
                                       : 'bg-gray-100 text-gray-700'
                                   }`}>
-                                    +{chapter.keyTopics.length - 3}
+                                    +{chapter.keyTopics.length - 4}
                                   </span>
                                 )}
                               </div>
                             </div>
 
                             {/* Skills & Projects */}
-                            <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <span className="text-purple-500 font-medium">Skills: {chapter.skills.length}</span>
+                                <span className="text-purple-500 font-bold">Skills: {chapter.skills.length}</span>
                               </div>
                               <div>
-                                <span className="text-cyan-500 font-medium">Projects: {chapter.practicalProjects.length}</span>
+                                <span className="text-cyan-500 font-bold">Projects: {chapter.practicalProjects.length}</span>
                               </div>
                             </div>
 
                             {/* Content Status */}
                             {hasDetailedContent && (
-                              <div className={`flex items-center space-x-2 text-xs ${
+                              <div className={`flex items-center space-x-3 ${
                                 theme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                               }`}>
-                                <Video className="w-4 h-4" />
-                                <span>Detailed content & quiz available</span>
+                                <Video className="w-5 h-5" />
+                                <span className="font-medium">Enhanced content & quiz available</span>
                               </div>
                             )}
 
                             {/* Action Button */}
                             <button 
-                              className={`w-full py-3 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2 ${
+                              className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center space-x-3 ${
                                 isCompleted
                                   ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
                                   : hasDetailedContent
@@ -858,7 +919,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                                     : 'View Overview'
                                 }
                               </span>
-                              <ChevronRight className="w-4 h-4" />
+                              <ChevronRight className="w-5 h-5" />
                             </button>
                           </div>
                         </div>
@@ -872,62 +933,62 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         </div>
 
         {/* Course Summary */}
-        <div className={`backdrop-blur-xl border rounded-3xl p-8 transition-colors ${
+        <div className={`backdrop-blur-xl border rounded-3xl p-10 transition-colors ${
           theme === 'dark' 
             ? 'bg-slate-800/50 border-white/10' 
             : 'bg-white/80 border-gray-200'
         }`}>
-          <h2 className={`text-2xl font-bold mb-6 transition-colors ${
+          <h2 className={`text-3xl font-bold mb-10 text-center transition-colors ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
             Course Summary
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-8 h-8 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <BookOpen className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-blue-500 mb-2">{totalChapters}</div>
-              <div className={`text-sm transition-colors ${
+              <div className="text-4xl font-bold text-blue-500 mb-3">{totalChapters}</div>
+              <div className={`text-lg font-medium transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>Total Chapters</div>
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Trophy className="w-8 h-8 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Trophy className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-green-500 mb-2">
+              <div className="text-4xl font-bold text-green-500 mb-3">
                 {roadmap.chapters.reduce((acc, chapter) => acc + chapter.practicalProjects.length, 0)}
               </div>
-              <div className={`text-sm transition-colors ${
+              <div className={`text-lg font-medium transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>Practical Projects</div>
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-8 h-8 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Zap className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-purple-500 mb-2">
+              <div className="text-4xl font-bold text-purple-500 mb-3">
                 {roadmap.chapters.reduce((acc, chapter) => acc + chapter.skills.length, 0)}
               </div>
-              <div className={`text-sm transition-colors ${
+              <div className={`text-lg font-medium transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>Skills to Master</div>
             </div>
             
             <div className="text-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Award className="w-10 h-10 text-white" />
               </div>
-              <div className="text-3xl font-bold text-orange-500 mb-2">
+              <div className="text-4xl font-bold text-orange-500 mb-3">
                 {detailedCourse ? detailedCourse.chapters.length : 0}
               </div>
-              <div className={`text-sm transition-colors ${
+              <div className={`text-lg font-medium transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>Detailed Lessons</div>
+              }`}>Enhanced Lessons</div>
             </div>
           </div>
         </div>

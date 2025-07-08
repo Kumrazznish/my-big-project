@@ -3,7 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { geminiService } from '../services/geminiService';
 import { userService } from '../services/userService';
-import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle, Brain } from 'lucide-react';
+import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle, Brain, Monitor, Layers, Database, Globe, Shield, Trophy, Timer, BarChart3, Settings, Wifi, Camera, Headphones, Smartphone } from 'lucide-react';
 
 interface Chapter {
   id: string;
@@ -26,7 +26,7 @@ interface CourseContent {
     keyPoints: string[];
     summary: string;
   };
-  videoUrl?: string;
+  videoId?: string;
   codeExamples: {
     title: string;
     code: string;
@@ -161,24 +161,6 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
     }
   };
 
-  const extractVideoId = (url: string) => {
-    if (!url) return null;
-    
-    // Only handle actual YouTube video URLs, not search URLs
-    if (url.includes('youtube.com/results') || url.includes('search_query')) {
-      return null;
-    }
-    
-    const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-  };
-
-  const isValidYouTubeUrl = (url: string) => {
-    if (!url) return false;
-    return extractVideoId(url) !== null;
-  };
-
   const getYouTubeEmbedUrl = (videoId: string) => {
     return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0&controls=1&autoplay=0`;
   };
@@ -191,20 +173,20 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
           : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
       }`}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center space-y-6">
+          <div className="text-center space-y-8">
             <div className="relative">
-              <div className="w-24 h-24 border-4 border-cyan-500/30 rounded-full animate-spin">
-                <div className="absolute top-0 left-0 w-6 h-6 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full"></div>
+              <div className="w-32 h-32 border-4 border-cyan-500/30 rounded-full animate-spin">
+                <div className="absolute top-0 left-0 w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full"></div>
               </div>
-              <BookOpen className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-cyan-500" />
+              <BookOpen className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 text-cyan-500" />
             </div>
             <div>
-              <h3 className={`text-2xl font-bold mb-2 transition-colors ${
+              <h3 className={`text-3xl font-bold mb-4 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Loading Course Content
               </h3>
-              <p className={`transition-colors ${
+              <p className={`text-lg transition-colors ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
                 Preparing comprehensive learning materials for {chapter.title}...
@@ -224,36 +206,36 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
           : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
       }`}>
         <div className="flex items-center justify-center min-h-screen">
-          <div className={`max-w-md mx-4 p-8 rounded-3xl border text-center transition-colors ${
+          <div className={`max-w-lg mx-4 p-10 rounded-3xl border text-center transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-red-500/30 backdrop-blur-xl' 
               : 'bg-white/80 border-red-200 backdrop-blur-xl'
           }`}>
-            <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <AlertCircle className="w-8 h-8 text-white" />
+            <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-8">
+              <AlertCircle className="w-10 h-10 text-white" />
             </div>
-            <h3 className={`text-xl font-bold mb-4 transition-colors ${
+            <h3 className={`text-2xl font-bold mb-6 transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
               Content Loading Failed
             </h3>
-            <p className={`mb-6 transition-colors ${
+            <p className={`mb-8 text-lg transition-colors ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
             }`}>
               {error}
             </p>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {retryCount < maxRetries && (
                 <button
                   onClick={handleRetry}
-                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold"
+                  className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold text-lg"
                 >
                   Try Again ({retryCount + 1}/{maxRetries})
                 </button>
               )}
               <button
                 onClick={onBack}
-                className={`w-full border px-6 py-3 rounded-xl transition-all duration-300 font-semibold ${
+                className={`w-full border px-8 py-4 rounded-xl transition-all duration-300 font-semibold text-lg ${
                   theme === 'dark' 
                     ? 'border-gray-600 text-gray-300 hover:border-gray-400 hover:bg-white/5' 
                     : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
@@ -270,8 +252,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
   if (!courseContent) return null;
 
-  const videoId = courseContent.videoUrl ? extractVideoId(courseContent.videoUrl) : null;
-  const hasValidVideo = videoId !== null;
+  const hasValidVideo = courseContent.videoId && courseContent.videoId !== 'dQw4w9WgXcQ';
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -283,48 +264,48 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
       <div className={`backdrop-blur-xl border-b sticky top-0 z-10 transition-colors ${
         theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-200'
       }`}>
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="max-w-6xl mx-auto px-4 py-8">
           <button
             onClick={onBack}
-            className={`flex items-center space-x-2 mb-6 px-4 py-2 rounded-xl transition-all duration-300 ${
+            className={`flex items-center space-x-3 mb-8 px-6 py-3 rounded-xl transition-all duration-300 ${
               theme === 'dark' 
                 ? 'text-gray-300 hover:text-white hover:bg-slate-800/50' 
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
             }`}
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to Roadmap</span>
+            <ArrowLeft className="w-6 h-6" />
+            <span className="font-semibold text-lg">Back to Roadmap</span>
           </button>
 
           <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl">
-                <BookOpen className="w-8 h-8 text-white" />
+            <div className="flex items-start space-x-8">
+              <div className="w-20 h-20 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl">
+                <BookOpen className="w-10 h-10 text-white" />
               </div>
               <div>
-                <h1 className={`text-3xl font-bold mb-2 transition-colors ${
+                <h1 className={`text-4xl font-bold mb-4 transition-colors ${
                   theme === 'dark' 
                     ? 'bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent' 
                     : 'text-gray-900'
                 }`}>
                   {courseContent.title}
                 </h1>
-                <p className={`text-lg mb-4 transition-colors ${
+                <p className={`text-xl mb-6 max-w-2xl transition-colors ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
                   {courseContent.description}
                 </p>
-                <div className="flex items-center space-x-6">
-                  <div className={`flex items-center space-x-2 transition-colors ${
+                <div className="flex items-center space-x-8">
+                  <div className={`flex items-center space-x-3 transition-colors ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
-                    <Clock className="w-5 h-5" />
-                    <span>{courseContent.estimatedTime}</span>
+                    <Clock className="w-6 h-6" />
+                    <span className="text-lg font-medium">{courseContent.estimatedTime}</span>
                   </div>
                   {isCompleted && (
-                    <div className="flex items-center space-x-2 text-green-500">
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="font-medium">Completed</span>
+                    <div className="flex items-center space-x-3 text-green-500">
+                      <CheckCircle className="w-6 h-6" />
+                      <span className="font-semibold text-lg">Completed</span>
                     </div>
                   )}
                 </div>
@@ -335,18 +316,18 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
               {!isCompleted && (
                 <button
                   onClick={handleMarkComplete}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-semibold flex items-center space-x-2"
+                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 font-bold text-lg flex items-center space-x-3"
                 >
-                  <CheckCircle className="w-5 h-5" />
+                  <CheckCircle className="w-6 h-6" />
                   <span>Mark Complete</span>
                 </button>
               )}
               {chapter.quiz && (
                 <button
                   onClick={() => onQuizStart(chapter)}
-                  className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold flex items-center space-x-2"
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-4 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-bold text-lg flex items-center space-x-3"
                 >
-                  <Award className="w-5 h-5" />
+                  <Award className="w-6 h-6" />
                   <span>Take Quiz</span>
                 </button>
               )}
@@ -357,26 +338,26 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Learning Objectives */}
-        <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+        <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
           theme === 'dark' 
             ? 'bg-slate-800/50 border-white/10' 
             : 'bg-white/80 border-gray-200'
         }`}>
-          <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+          <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            <Target className="w-6 h-6 mr-3 text-purple-500" />
+            <Target className="w-8 h-8 mr-4 text-purple-500" />
             Learning Objectives
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {courseContent.learningObjectives.map((objective, index) => (
-              <div key={index} className={`flex items-start space-x-3 p-4 rounded-2xl transition-colors ${
+              <div key={index} className={`flex items-start space-x-4 p-6 rounded-2xl transition-colors ${
                 theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
               }`}>
-                <div className="w-6 h-6 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-white text-xs font-bold">{index + 1}</span>
+                <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                  <span className="text-white text-sm font-bold">{index + 1}</span>
                 </div>
-                <p className={`transition-colors ${
+                <p className={`text-lg transition-colors ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>
                   {objective}
@@ -387,22 +368,22 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
         </div>
 
         {/* Video Section */}
-        {hasValidVideo && videoId && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+        {hasValidVideo && courseContent.videoId && (
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+            <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <Youtube className="w-6 h-6 mr-3 text-red-500" />
+              <Youtube className="w-8 h-8 mr-4 text-red-500" />
               Video Lesson
             </h2>
-            <div className="aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+            <div className="aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black">
               {!videoError ? (
                 <iframe
-                  src={getYouTubeEmbedUrl(videoId)}
+                  src={getYouTubeEmbedUrl(courseContent.videoId)}
                   title={courseContent.title}
                   className="w-full h-full"
                   allowFullScreen
@@ -414,19 +395,19 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                   theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
                 }`}>
                   <div className="text-center">
-                    <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className={`mb-4 transition-colors ${
+                    <AlertCircle className="w-20 h-20 text-gray-400 mx-auto mb-6" />
+                    <p className={`mb-6 text-lg transition-colors ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                     }`}>
                       Video could not be loaded
                     </p>
                     <a
-                      href={courseContent.videoUrl}
+                      href={`https://www.youtube.com/watch?v=${courseContent.videoId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                      className="inline-flex items-center space-x-3 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-semibold"
                     >
-                      <Youtube className="w-4 h-4" />
+                      <Youtube className="w-5 h-5" />
                       <span>Watch on YouTube</span>
                     </a>
                   </div>
@@ -437,27 +418,27 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
         )}
 
         {/* Main Content */}
-        <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+        <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
           theme === 'dark' 
             ? 'bg-slate-800/50 border-white/10' 
             : 'bg-white/80 border-gray-200'
         }`}>
-          <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+          <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            <Book className="w-6 h-6 mr-3 text-blue-500" />
+            <Book className="w-8 h-8 mr-4 text-blue-500" />
             Course Content
           </h2>
 
-          <div className="space-y-8">
+          <div className="space-y-10">
             {/* Introduction */}
             <div>
-              <h3 className={`text-xl font-bold mb-4 transition-colors ${
+              <h3 className={`text-2xl font-bold mb-6 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Introduction
               </h3>
-              <p className={`text-lg leading-relaxed transition-colors ${
+              <p className={`text-xl leading-relaxed transition-colors ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 {courseContent.content.introduction}
@@ -466,7 +447,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
             {/* Main Content */}
             <div>
-              <h3 className={`text-xl font-bold mb-4 transition-colors ${
+              <h3 className={`text-2xl font-bold mb-6 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Main Content
@@ -474,7 +455,7 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
               <div className={`prose max-w-none transition-colors ${
                 theme === 'dark' ? 'prose-invert' : ''
               }`}>
-                <div className={`text-lg leading-relaxed whitespace-pre-line transition-colors ${
+                <div className={`text-xl leading-relaxed whitespace-pre-line transition-colors ${
                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>
                   {courseContent.content.mainContent}
@@ -484,18 +465,18 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
             {/* Key Points */}
             <div>
-              <h3 className={`text-xl font-bold mb-4 transition-colors ${
+              <h3 className={`text-2xl font-bold mb-6 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Key Points
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {courseContent.content.keyPoints.map((point, index) => (
-                  <div key={index} className={`flex items-start space-x-3 p-4 rounded-2xl transition-colors ${
+                  <div key={index} className={`flex items-start space-x-4 p-6 rounded-2xl transition-colors ${
                     theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
                   }`}>
-                    <Lightbulb className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <p className={`transition-colors ${
+                    <Lightbulb className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
+                    <p className={`text-lg transition-colors ${
                       theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                     }`}>
                       {point}
@@ -506,15 +487,15 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
             </div>
 
             {/* Summary */}
-            <div className={`p-6 rounded-2xl border-l-4 border-cyan-500 transition-colors ${
+            <div className={`p-8 rounded-3xl border-l-4 border-cyan-500 transition-colors ${
               theme === 'dark' ? 'bg-cyan-500/10' : 'bg-cyan-50'
             }`}>
-              <h3 className={`text-xl font-bold mb-4 transition-colors ${
+              <h3 className={`text-2xl font-bold mb-6 transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 Summary
               </h3>
-              <p className={`text-lg leading-relaxed transition-colors ${
+              <p className={`text-xl leading-relaxed transition-colors ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
                 {courseContent.content.summary}
@@ -525,33 +506,33 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
         {/* Code Examples */}
         {courseContent.codeExamples && courseContent.codeExamples.length > 0 && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+            <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <Code className="w-6 h-6 mr-3 text-green-500" />
+              <Code className="w-8 h-8 mr-4 text-green-500" />
               Code Examples
             </h2>
-            <div className="space-y-6">
+            <div className="space-y-8">
               {courseContent.codeExamples.map((example, index) => (
-                <div key={index} className={`border rounded-2xl overflow-hidden transition-colors ${
+                <div key={index} className={`border rounded-3xl overflow-hidden transition-colors ${
                   theme === 'dark' ? 'border-white/10' : 'border-gray-200'
                 }`}>
-                  <div className={`px-6 py-4 border-b flex items-center justify-between transition-colors ${
+                  <div className={`px-8 py-6 border-b flex items-center justify-between transition-colors ${
                     theme === 'dark' ? 'bg-slate-700/50 border-white/10' : 'bg-gray-50 border-gray-200'
                   }`}>
-                    <h3 className={`font-bold transition-colors ${
+                    <h3 className={`text-xl font-bold transition-colors ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
                       {example.title}
                     </h3>
                     <button
                       onClick={() => copyToClipboard(example.code, example.title)}
-                      className={`flex items-center space-x-2 px-3 py-1 rounded-lg transition-all duration-300 ${
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 ${
                         copiedCode === example.title
                           ? 'bg-green-500 text-white'
                           : theme === 'dark'
@@ -561,26 +542,26 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                     >
                       {copiedCode === example.title ? (
                         <>
-                          <Check className="w-4 h-4" />
-                          <span className="text-sm">Copied!</span>
+                          <Check className="w-5 h-5" />
+                          <span className="font-medium">Copied!</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-4 h-4" />
-                          <span className="text-sm">Copy</span>
+                          <Copy className="w-5 h-5" />
+                          <span className="font-medium">Copy</span>
                         </>
                       )}
                     </button>
                   </div>
-                  <div className="bg-gray-900 p-6">
-                    <pre className="text-green-400 text-sm overflow-x-auto">
+                  <div className="bg-gray-900 p-8">
+                    <pre className="text-green-400 text-lg overflow-x-auto">
                       <code>{example.code}</code>
                     </pre>
                   </div>
-                  <div className={`px-6 py-4 transition-colors ${
+                  <div className={`px-8 py-6 transition-colors ${
                     theme === 'dark' ? 'bg-slate-700/30' : 'bg-gray-50'
                   }`}>
-                    <p className={`text-sm transition-colors ${
+                    <p className={`text-lg transition-colors ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                     }`}>
                       {example.explanation}
@@ -594,33 +575,33 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
         {/* Practical Exercises */}
         {courseContent.practicalExercises && courseContent.practicalExercises.length > 0 && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+            <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <Zap className="w-6 h-6 mr-3 text-yellow-500" />
+              <Zap className="w-8 h-8 mr-4 text-yellow-500" />
               Practical Exercises
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {courseContent.practicalExercises.map((exercise, index) => (
-                <div key={index} className={`border rounded-2xl p-6 transition-colors ${
+                <div key={index} className={`border rounded-3xl p-8 transition-colors ${
                   theme === 'dark' ? 'border-white/10 bg-slate-700/30' : 'border-gray-200 bg-gray-50'
                 }`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className={`font-bold transition-colors ${
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className={`text-xl font-bold transition-colors ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
                       {exercise.title}
                     </h3>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getDifficultyColor(exercise.difficulty)} text-white`}>
+                    <span className={`px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r ${getDifficultyColor(exercise.difficulty)} text-white`}>
                       {exercise.difficulty.charAt(0).toUpperCase() + exercise.difficulty.slice(1)}
                     </span>
                   </div>
-                  <p className={`text-sm transition-colors ${
+                  <p className={`text-lg transition-colors ${
                     theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                   }`}>
                     {exercise.description}
@@ -633,18 +614,18 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
         {/* Additional Resources */}
         {courseContent.additionalResources && courseContent.additionalResources.length > 0 && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 mb-8 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+            <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <ExternalLink className="w-6 h-6 mr-3 text-purple-500" />
+              <ExternalLink className="w-8 h-8 mr-4 text-purple-500" />
               Additional Resources
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {courseContent.additionalResources.map((resource, index) => {
                 const ResourceIcon = getResourceIcon(resource.type);
                 return (
@@ -653,34 +634,34 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
                     href={resource.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`group border rounded-2xl p-6 transition-all duration-300 hover:scale-105 ${
+                    className={`group border rounded-3xl p-8 transition-all duration-300 hover:scale-105 ${
                       theme === 'dark' 
                         ? 'border-white/10 bg-slate-700/30 hover:border-purple-500/30' 
-                        : 'border-gray-200 bg-gray-50 hover:border-purple-300 hover:shadow-lg'
+                        : 'border-gray-200 bg-gray-50 hover:border-purple-300 hover:shadow-xl'
                     }`}
                   >
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <ResourceIcon className="w-6 h-6 text-white" />
+                    <div className="flex items-start space-x-6">
+                      <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+                        <ResourceIcon className="w-8 h-8 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h3 className={`font-bold mb-2 group-hover:text-purple-500 transition-colors ${
+                        <h3 className={`text-xl font-bold mb-3 group-hover:text-purple-500 transition-colors ${
                           theme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
                           {resource.title}
                         </h3>
-                        <p className={`text-sm mb-2 transition-colors ${
+                        <p className={`text-lg mb-4 transition-colors ${
                           theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                         }`}>
                           {resource.description}
                         </p>
-                        <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        <span className={`inline-flex px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                           theme === 'dark' ? 'bg-slate-600 text-gray-300' : 'bg-gray-200 text-gray-700'
                         }`}>
                           {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
                         </span>
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-purple-500 transition-colors" />
+                      <ChevronRight className="w-6 h-6 text-gray-400 group-hover:text-purple-500 transition-colors" />
                     </div>
                   </a>
                 );
@@ -691,26 +672,26 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
 
         {/* Next Steps */}
         {courseContent.nextSteps && courseContent.nextSteps.length > 0 && (
-          <div className={`backdrop-blur-xl border rounded-3xl p-8 transition-colors ${
+          <div className={`backdrop-blur-xl border rounded-3xl p-10 transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
               : 'bg-white/80 border-gray-200'
           }`}>
-            <h2 className={`text-2xl font-bold mb-6 flex items-center transition-colors ${
+            <h2 className={`text-3xl font-bold mb-8 flex items-center transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>
-              <Star className="w-6 h-6 mr-3 text-cyan-500" />
+              <Star className="w-8 h-8 mr-4 text-cyan-500" />
               Next Steps
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {courseContent.nextSteps.map((step, index) => (
-                <div key={index} className={`flex items-start space-x-4 p-4 rounded-2xl transition-colors ${
+                <div key={index} className={`flex items-start space-x-6 p-6 rounded-2xl transition-colors ${
                   theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-50'
                 }`}>
-                  <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm font-bold">{index + 1}</span>
+                  <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold">{index + 1}</span>
                   </div>
-                  <p className={`transition-colors ${
+                  <p className={`text-lg transition-colors ${
                     theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                   }`}>
                     {step}
