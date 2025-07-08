@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, CheckCircle, XCircle, Brain, Clock } from 'lucide-react';
 import { Chapter, Quiz, Question, QuizResult } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -12,6 +13,7 @@ interface QuizViewProps {
 }
 
 const QuizView: React.FC<QuizViewProps> = ({
+  const { theme } = useTheme();
   chapter,
   subject,
   difficulty,
@@ -107,10 +109,17 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-lg text-gray-600">Generating quiz questions...</p>
+          <p className={`text-lg transition-colors ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>Generating quiz questions...</p>
         </div>
       </div>
     );
@@ -118,7 +127,11 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
@@ -138,55 +151,93 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   if (showResult && quizResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
+      <div className={`min-h-screen py-8 px-4 transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl shadow-lg p-8">
+          <div className={`rounded-xl shadow-lg p-8 transition-colors ${
+            theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+          }`}>
             <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+              }`}>
                 <Brain className="w-10 h-10 text-blue-600" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Quiz Complete!</h1>
-              <p className="text-gray-600">Here's how you performed on the {chapter.title} quiz</p>
+              <h1 className={`text-3xl font-bold mb-2 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>Quiz Complete!</h1>
+              <p className={`transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>Here's how you performed on the {chapter.title} quiz</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
+              <div className={`rounded-lg p-4 text-center ${
+                theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'
+              }`}>
                 <div className={`text-2xl font-bold ${getScoreColor(quizResult.percentage)}`}>
                   {quizResult.percentage}%
                 </div>
                 <div className="text-sm text-gray-600">Overall Score</div>
+                <div className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Overall Score</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
+              <div className={`rounded-lg p-4 text-center ${
+                theme === 'dark' ? 'bg-green-500/20' : 'bg-green-50'
+              }`}>
                 <div className="text-2xl font-bold text-green-600">
                   {quizResult.correctAnswers}
                 </div>
                 <div className="text-sm text-gray-600">Correct</div>
+                <div className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Correct</div>
               </div>
-              <div className="bg-red-50 rounded-lg p-4 text-center">
+              <div className={`rounded-lg p-4 text-center ${
+                theme === 'dark' ? 'bg-red-500/20' : 'bg-red-50'
+              }`}>
                 <div className="text-2xl font-bold text-red-600">
                   {quizResult.wrongAnswers}
                 </div>
                 <div className="text-sm text-gray-600">Wrong</div>
+                <div className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Wrong</div>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <div className={`rounded-lg p-4 text-center ${
+                theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'
+              }`}>
                 <div className="text-2xl font-bold text-gray-600">
                   {quizResult.totalQuestions}
                 </div>
                 <div className="text-sm text-gray-600">Total</div>
+                <div className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Total</div>
               </div>
             </div>
 
             <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Review Your Answers</h2>
+              <h2 className={`text-xl font-semibold mb-4 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>Review Your Answers</h2>
               <div className="space-y-4">
                 {quiz.questions.map((question, index) => {
                   const userAnswer = quizResult.answers[index];
                   const isCorrect = userAnswer.isCorrect;
                   
                   return (
-                    <div key={question.id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={question.id} className={`border rounded-lg p-4 transition-colors ${
+                      theme === 'dark' ? 'border-gray-600 bg-slate-700/30' : 'border-gray-200'
+                    }`}>
                       <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-medium text-gray-900">
+                        <h3 className={`font-medium transition-colors ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
                           {index + 1}. {question.question}
                         </h3>
                         {isCorrect ? (
@@ -200,12 +251,18 @@ const QuizView: React.FC<QuizViewProps> = ({
                         {question.options.map((option, optionIndex) => (
                           <div
                             key={optionIndex}
-                            className={`p-2 rounded text-sm ${
+                            className={`p-2 rounded text-sm transition-colors ${
                               optionIndex === question.correctAnswer
-                                ? 'bg-green-100 text-green-800 border border-green-300'
+                                ? theme === 'dark'
+                                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                  : 'bg-green-100 text-green-800 border border-green-300'
                                 : optionIndex === userAnswer.selectedAnswer && !isCorrect
-                                ? 'bg-red-100 text-red-800 border border-red-300'
-                                : 'bg-gray-50 text-gray-700'
+                                ? theme === 'dark'
+                                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                  : 'bg-red-100 text-red-800 border border-red-300'
+                                : theme === 'dark'
+                                  ? 'bg-gray-700/50 text-gray-300'
+                                  : 'bg-gray-50 text-gray-700'
                             }`}
                           >
                             {option}
@@ -220,6 +277,11 @@ const QuizView: React.FC<QuizViewProps> = ({
                       </div>
                       
                       <div className="mt-3 p-3 bg-blue-50 rounded text-sm text-blue-800">
+                      <div className={`mt-3 p-3 rounded text-sm transition-colors ${
+                        theme === 'dark' 
+                          ? 'bg-blue-500/20 text-blue-300' 
+                          : 'bg-blue-50 text-blue-800'
+                      }`}>
                         <strong>Explanation:</strong> {question.explanation}
                       </div>
                     </div>
@@ -244,7 +306,11 @@ const QuizView: React.FC<QuizViewProps> = ({
 
   if (!quizStarted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
+      <div className={`min-h-screen py-8 px-4 transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="max-w-2xl mx-auto">
           <button
             onClick={onBack}
@@ -254,20 +320,35 @@ const QuizView: React.FC<QuizViewProps> = ({
             Back to Chapter
           </button>
           
-          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className={`rounded-xl shadow-lg p-8 text-center transition-colors ${
+            theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+          }`}>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+              theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+            }`}>
               <Brain className="w-10 h-10 text-blue-600" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            <h1 className={`text-2xl font-bold mb-4 transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               {chapter.title} Quiz
             </h1>
-            <p className="text-gray-600 mb-8">
+            <p className={`mb-8 transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
               Test your knowledge with {quiz.questions.length} questions. 
               {quiz.timeLimit && ` You have ${Math.floor(quiz.timeLimit / 60)} minutes to complete the quiz.`}
             </p>
             <div className="bg-blue-50 rounded-xl p-6 mb-8">
-              <h3 className="font-semibold text-blue-900 mb-2">Quiz Instructions:</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className={`rounded-xl p-6 mb-8 transition-colors ${
+              theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50'
+            }`}>
+              <h3 className={`font-semibold mb-2 transition-colors ${
+                theme === 'dark' ? 'text-blue-400' : 'text-blue-900'
+              }`}>Quiz Instructions:</h3>
+              <ul className={`text-sm space-y-1 transition-colors ${
+                theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+              }`}>
                 <li>• {quiz.questions.length} multiple choice questions</li>
                 <li>• {Math.floor((quiz.timeLimit || 300) / 60)} minutes time limit</li>
                 {quiz.passingScore && <li>• Passing score: {quiz.passingScore}%</li>}
@@ -289,15 +370,27 @@ const QuizView: React.FC<QuizViewProps> = ({
   const currentQ = quiz.questions[currentQuestion];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
+    <div className={`min-h-screen py-8 px-4 transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+    }`}>
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className={`rounded-xl shadow-lg p-8 transition-colors ${
+          theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+        }`}>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
+              <span className={`text-sm transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
                 Question {currentQuestion + 1} of {quiz.questions.length}
               </span>
               <div className="w-48 bg-gray-200 rounded-full h-2">
+              <div className={`w-48 rounded-full h-2 ${
+                theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+              }`}>
                 <div
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                   style={{ width: `${((currentQuestion + 1) / quiz.questions.length) * 100}%` }}
@@ -311,6 +404,9 @@ const QuizView: React.FC<QuizViewProps> = ({
           </div>
 
           <h2 className="text-xl font-semibold text-gray-900 mb-6">
+          <h2 className={`text-xl font-semibold mb-6 transition-colors ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          }`}>
             {currentQ.question}
           </h2>
 
@@ -321,15 +417,21 @@ const QuizView: React.FC<QuizViewProps> = ({
                 onClick={() => handleAnswerSelect(currentQ.id, index)}
                 className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                   answers[currentQ.id] === index
-                    ? 'border-blue-500 bg-blue-50 text-blue-900'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    ? theme === 'dark'
+                      ? 'border-blue-500 bg-blue-500/20 text-blue-300'
+                      : 'border-blue-500 bg-blue-50 text-blue-900'
+                    : theme === 'dark'
+                      ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/30 text-gray-300'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 <div className="flex items-center">
                   <div className={`w-4 h-4 rounded-full border-2 mr-3 ${
                     answers[currentQ.id] === index
-                      ? 'border-blue-500 bg-blue-500'
-                      : 'border-gray-300'
+                      ? 'border-blue-500 bg-blue-500' 
+                      : theme === 'dark'
+                        ? 'border-gray-500'
+                        : 'border-gray-300'
                   }`}>
                     {answers[currentQ.id] === index && (
                       <div className="w-full h-full rounded-full bg-white scale-50"></div>
@@ -345,7 +447,15 @@ const QuizView: React.FC<QuizViewProps> = ({
             <button
               onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
               disabled={currentQuestion === 0}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              className={`px-4 py-2 disabled:cursor-not-allowed transition-colors ${
+                currentQuestion === 0
+                  ? theme === 'dark'
+                    ? 'text-gray-600'
+                    : 'text-gray-400'
+                  : theme === 'dark'
+                    ? 'text-gray-400 hover:text-gray-200'
+                    : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               Previous
             </button>
@@ -361,7 +471,13 @@ const QuizView: React.FC<QuizViewProps> = ({
               <button
                 onClick={() => setCurrentQuestion(Math.min(quiz.questions.length - 1, currentQuestion + 1))}
                 disabled={answers[currentQ.id] === undefined}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                className={`px-6 py-2 rounded-lg transition-colors font-medium ${
+                  answers[currentQ.id] === undefined
+                    ? theme === 'dark'
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
                 Next
               </button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { Clock, BookOpen, Play, ArrowLeft, CheckCircle, Target, Users, Award, ChevronDown, ChevronUp } from 'lucide-react';
 import { Roadmap, Chapter } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -11,6 +12,7 @@ interface RoadmapViewProps {
 }
 
 const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, onChapterSelect }) => {
+  const { theme } = useTheme();
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,11 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center">
           <div className="relative">
             <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
@@ -77,7 +83,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             {retrying ? 'Retrying...' : 'Creating Your Learning Path'}
           </h3>
-          <p className="text-gray-600">
+          <p className={`transition-colors ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>
             {retrying 
               ? 'The AI service was busy, trying again...' 
               : 'AI is generating a personalized roadmap for you...'
@@ -90,7 +98,11 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center max-w-md">
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
             <div className="text-red-600 mb-4">
@@ -125,9 +137,15 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   if (!roadmap) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+    }`}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
+      <div className={`backdrop-blur-sm border-b sticky top-0 z-10 transition-colors ${
+        theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-200'
+      }`}>
         <div className="max-w-6xl mx-auto px-4 py-6">
           <button
             onClick={onBack}
@@ -139,19 +157,29 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className={`text-3xl font-bold mb-2 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>
                 {roadmap.subject} Learning Roadmap
               </h1>
-              <p className="text-gray-600 mb-4">{roadmap.description}</p>
+              <p className={`mb-4 transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>{roadmap.description}</p>
               
               {roadmap.learningOutcomes && (
                 <div className="mb-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">What you'll learn:</h3>
+                  <h3 className={`font-semibold mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>What you'll learn:</h3>
                   <div className="flex flex-wrap gap-2">
                     {roadmap.learningOutcomes.map((outcome, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          theme === 'dark' 
+                            ? 'bg-blue-500/20 text-blue-400' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
                       >
                         {outcome}
                       </span>
@@ -161,10 +189,16 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               )}
             </div>
             
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <h3 className="font-semibold text-gray-900 mb-4">Course Overview</h3>
+            <div className={`rounded-xl p-6 shadow-lg transition-colors ${
+              theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+            }`}>
+              <h3 className={`font-semibold mb-4 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>Course Overview</h3>
               <div className="space-y-3">
-                <div className="flex items-center text-sm text-gray-600">
+                <div className={`flex items-center text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
                   <Clock size={16} className="mr-2 text-blue-600" />
                   Duration: {roadmap.totalDuration}
                 </div>
@@ -185,9 +219,15 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               </div>
               
               {roadmap.prerequisites && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-900 mb-2">Prerequisites:</h4>
-                  <ul className="text-sm text-gray-600 space-y-1">
+                <div className={`mt-4 pt-4 border-t transition-colors ${
+                  theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                }`}>
+                  <h4 className={`font-medium mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>Prerequisites:</h4>
+                  <ul className={`text-sm space-y-1 transition-colors ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
                     {roadmap.prerequisites.map((prereq, index) => (
                       <li key={index} className="flex items-center">
                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-2"></div>
@@ -227,19 +267,30 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                 }`}
               >
                 <div className="bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden">
+                <div className={`rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 overflow-hidden ${
+                  theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+                }`}>
                   {/* Card Header */}
-                  <div className="p-6 border-b border-gray-100">
+                  <div className={`p-6 border-b transition-colors ${
+                    theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
+                  }`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold text-gray-900">{chapter.title}</h3>
+                      <h3 className={`text-xl font-bold transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{chapter.title}</h3>
                       {chapter.completed && (
                         <CheckCircle className="text-green-500" size={24} />
                       )}
                     </div>
-                    <p className="text-gray-600 mb-4">{chapter.description}</p>
+                    <p className={`mb-4 transition-colors ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>{chapter.description}</p>
                     
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-4">
-                        <div className="flex items-center text-gray-500">
+                        <div className={`flex items-center transition-colors ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
                           <Clock size={14} className="mr-1" />
                           {chapter.duration}
                         </div>
@@ -258,16 +309,24 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
 
                   {/* Expandable Content */}
                   {chapter.keyTopics && (
-                    <div className="px-6 py-4 border-b border-gray-100">
+                    <div className={`px-6 py-4 border-b transition-colors ${
+                      theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
+                    }`}>
                       <button
                         onClick={() => toggleChapterExpansion(chapter.id)}
                         className="flex items-center justify-between w-full text-left"
                       >
-                        <span className="font-medium text-gray-900">Chapter Details</span>
+                        <span className={`font-medium transition-colors ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>Chapter Details</span>
                         {expandedChapter === chapter.id ? (
-                          <ChevronUp size={20} className="text-gray-400" />
+                          <ChevronUp size={20} className={`transition-colors ${
+                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                          }`} />
                         ) : (
-                          <ChevronDown size={20} className="text-gray-400" />
+                          <ChevronDown size={20} className={`transition-colors ${
+                            theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                          }`} />
                         )}
                       </button>
                       
@@ -275,12 +334,18 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                         <div className="mt-4 space-y-4">
                           {chapter.keyTopics && (
                             <div>
-                              <h4 className="font-medium text-gray-900 mb-2">Key Topics:</h4>
+                              <h4 className={`font-medium mb-2 transition-colors ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>Key Topics:</h4>
                               <div className="flex flex-wrap gap-2">
                                 {chapter.keyTopics.map((topic, topicIndex) => (
                                   <span
                                     key={topicIndex}
-                                    className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-sm"
+                                    className={`px-2 py-1 rounded-md text-sm ${
+                                      theme === 'dark' 
+                                        ? 'bg-blue-500/20 text-blue-400' 
+                                        : 'bg-blue-50 text-blue-700'
+                                    }`}
                                   >
                                     {topic}
                                   </span>
@@ -291,12 +356,18 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                           
                           {chapter.skills && (
                             <div>
-                              <h4 className="font-medium text-gray-900 mb-2">Skills You'll Gain:</h4>
+                              <h4 className={`font-medium mb-2 transition-colors ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>Skills You'll Gain:</h4>
                               <div className="flex flex-wrap gap-2">
                                 {chapter.skills.map((skill, skillIndex) => (
                                   <span
                                     key={skillIndex}
-                                    className="px-2 py-1 bg-green-50 text-green-700 rounded-md text-sm"
+                                    className={`px-2 py-1 rounded-md text-sm ${
+                                      theme === 'dark' 
+                                        ? 'bg-green-500/20 text-green-400' 
+                                        : 'bg-green-50 text-green-700'
+                                    }`}
                                   >
                                     {skill}
                                   </span>
@@ -307,10 +378,14 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
                           
                           {chapter.practicalProjects && (
                             <div>
-                              <h4 className="font-medium text-gray-900 mb-2">Practical Projects:</h4>
+                              <h4 className={`font-medium mb-2 transition-colors ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>Practical Projects:</h4>
                               <ul className="space-y-1">
                                 {chapter.practicalProjects.map((project, projectIndex) => (
-                                  <li key={projectIndex} className="text-sm text-gray-600 flex items-center">
+                                  <li key={projectIndex} className={`text-sm flex items-center transition-colors ${
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                                  }`}>
                                     <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2"></div>
                                     {project}
                                   </li>
@@ -350,9 +425,15 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
 
         {/* Generate Course Button */}
         <div className="text-center mt-16">
-          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready to Start Your Journey?</h3>
-            <p className="text-gray-600 mb-6">
+          <div className={`rounded-2xl shadow-xl p-8 max-w-2xl mx-auto transition-colors ${
+            theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+          }`}>
+            <h3 className={`text-2xl font-bold mb-4 transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>Ready to Start Your Journey?</h3>
+            <p className={`mb-6 transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
               Click on any chapter above to begin learning, or start from the beginning for the best experience.
             </p>
             <button

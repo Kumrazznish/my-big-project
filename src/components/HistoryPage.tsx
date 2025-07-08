@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { Clock, BookOpen, Target, TrendingUp, Calendar, ArrowRight, Play, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { userService } from '../services/userService';
@@ -9,6 +10,7 @@ interface HistoryPageProps {
 }
 
 const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
+  const { theme } = useTheme();
   const { user } = useAuth();
   const [history, setHistory] = useState<LearningHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,10 +62,17 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-lg text-gray-600">Loading your learning history...</p>
+          <p className={`text-lg transition-colors ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>Loading your learning history...</p>
         </div>
       </div>
     );
@@ -71,7 +80,11 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
@@ -88,19 +101,33 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+    }`}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+      <div className={`backdrop-blur-sm border-b transition-colors ${
+        theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-200'
+      }`}>
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Learning History</h1>
-              <p className="text-gray-600">Track your progress and continue your learning journey</p>
+              <h1 className={`text-3xl font-bold mb-2 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>Learning History</h1>
+              <p className={`transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>Track your progress and continue your learning journey</p>
             </div>
-            <div className="bg-white rounded-xl p-6 shadow-lg">
+            <div className={`rounded-xl p-6 shadow-lg transition-colors ${
+              theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+            }`}>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{history.length}</div>
-                <div className="text-sm text-gray-600">Learning Paths</div>
+                <div className={`text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>Learning Paths</div>
               </div>
             </div>
           </div>
@@ -110,11 +137,17 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
       <div className="max-w-6xl mx-auto px-4 py-8">
         {history.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 ${
+              theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+            }`}>
               <BookOpen className="w-12 h-12 text-blue-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">No Learning History Yet</h2>
-            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            <h2 className={`text-2xl font-bold mb-4 transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>No Learning History Yet</h2>
+            <p className={`mb-8 max-w-md mx-auto transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
               Start your first learning journey to see your progress and achievements here.
             </p>
             <button
@@ -131,19 +164,26 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
               const isCompleted = progress === 100;
               
               return (
-                <div key={item._id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
+                <div key={item._id} className={`rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden ${
+                  theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+                }`}>
                   <div className="p-8">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {/* Main Info */}
                       <div className="lg:col-span-2 space-y-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-2">{item.subject}</h3>
+                            <h3 className={`text-2xl font-bold mb-2 transition-colors ${
+                              theme === 'dark' ? 'text-white' : 'text-gray-900'
+                            }`}>{item.subject}</h3>
                             <div className="flex items-center space-x-4 mb-4">
                               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getDifficultyColor(item.difficulty)}`}>
                                 {item.difficulty}
                               </span>
                               <div className="flex items-center text-gray-600">
+                              <div className={`flex items-center transition-colors ${
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                              }`}>
                                 <Calendar className="w-4 h-4 mr-1" />
                                 Started {formatDate(item.startedAt)}
                               </div>
@@ -163,11 +203,17 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
                         </div>
 
                         {/* Learning Preferences */}
-                        <div className="bg-gray-50 rounded-xl p-4">
-                          <h4 className="font-semibold text-gray-900 mb-2">Learning Preferences</h4>
+                        <div className={`rounded-xl p-4 transition-colors ${
+                          theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'
+                        }`}>
+                          <h4 className={`font-semibold mb-2 transition-colors ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>Learning Preferences</h4>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div>
-                              <span className="text-gray-600">Style:</span>
+                              <span className={`transition-colors ${
+                                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                              }`}>Style:</span>
                               <span className="ml-2 font-medium capitalize">{item.learningPreferences.learningStyle}</span>
                             </div>
                             <div>
@@ -184,26 +230,41 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
                         {/* Chapter Progress */}
                         <div>
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-semibold text-gray-900">Chapter Progress</h4>
-                            <span className="text-sm text-gray-600">
+                            <h4 className={`font-semibold transition-colors ${
+                              theme === 'dark' ? 'text-white' : 'text-gray-900'
+                            }`}>Chapter Progress</h4>
+                            <span className={`text-sm transition-colors ${
+                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            }`}>
                               {item.chapterProgress.filter(c => c.completed).length} of {item.chapterProgress.length} completed
                             </span>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {item.chapterProgress.slice(0, 6).map((chapter, index) => (
-                              <div key={chapter.chapterId} className="flex items-center space-x-2 text-sm">
+                              <div key={chapter.chapterId} className={`flex items-center space-x-2 text-sm transition-colors ${
+                                chapter.completed 
+                                  ? 'text-green-600' 
+                                  : theme === 'dark' 
+                                    ? 'text-gray-400' 
+                                    : 'text-gray-600'
+                              }`}>
                                 {chapter.completed ? (
                                   <CheckCircle className="w-4 h-4 text-green-500" />
                                 ) : (
                                   <div className="w-4 h-4 border-2 border-gray-300 rounded-full"></div>
+                                  <div className={`w-4 h-4 border-2 rounded-full ${
+                                    theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
+                                  }`}></div>
                                 )}
-                                <span className={chapter.completed ? 'text-green-700' : 'text-gray-600'}>
+                                <span>
                                   Chapter {index + 1}
                                 </span>
                               </div>
                             ))}
                             {item.chapterProgress.length > 6 && (
-                              <div className="text-sm text-gray-500">
+                              <div className={`text-sm transition-colors ${
+                                theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                              }`}>
                                 +{item.chapterProgress.length - 6} more chapters
                               </div>
                             )}
@@ -224,7 +285,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
                                 stroke="currentColor"
                                 strokeWidth="8"
                                 fill="transparent"
-                                className="text-gray-200"
+                                className={theme === 'dark' ? 'text-gray-700' : 'text-gray-200'}
                               />
                               <circle
                                 cx="50"
@@ -240,20 +301,29 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
                               />
                             </svg>
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-xl font-bold text-gray-900">{progress}%</span>
+                              <span className={`text-xl font-bold transition-colors ${
+                                theme === 'dark' ? 'text-white' : 'text-gray-900'
+                              }`}>{progress}%</span>
                             </div>
                           </div>
                           <p className="text-sm text-gray-600">Overall Progress</p>
+                          <p className={`text-sm transition-colors ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                          }`}>Overall Progress</p>
                         </div>
 
                         {/* Stats */}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Time Spent:</span>
+                            <span className={`transition-colors ${
+                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            }`}>Time Spent:</span>
                             <span className="font-medium">{item.timeSpent || 'N/A'}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Last Activity:</span>
+                            <span className={`transition-colors ${
+                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            }`}>Last Activity:</span>
                             <span className="font-medium">{formatDate(item.lastAccessedAt)}</span>
                           </div>
                         </div>

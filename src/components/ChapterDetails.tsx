@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { ArrowLeft, Play, ExternalLink, FileText, Brain, CheckCircle, Clock, Target, BookOpen, Code, Lightbulb } from 'lucide-react';
 import { Chapter, CourseContent } from '../types';
 import { geminiService } from '../services/geminiService';
@@ -12,6 +13,7 @@ interface ChapterDetailsProps {
 }
 
 const ChapterDetails: React.FC<ChapterDetailsProps> = ({
+  const { theme } = useTheme();
   chapter,
   subject,
   difficulty,
@@ -48,7 +50,11 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center">
           <div className="relative">
             <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto mb-6"></div>
@@ -57,7 +63,9 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
             </div>
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Generating Course Content</h3>
-          <p className="text-gray-600">AI is creating detailed learning materials for you...</p>
+          <p className={`transition-colors ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+          }`}>AI is creating detailed learning materials for you...</p>
         </div>
       </div>
     );
@@ -65,7 +73,11 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === 'dark' 
+          ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+      }`}>
         <div className="text-center max-w-md">
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
             <div className="text-red-600 mb-4">
@@ -107,9 +119,15 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+    }`}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-10">
+      <div className={`backdrop-blur-sm border-b sticky top-0 z-10 transition-colors ${
+        theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-200'
+      }`}>
         <div className="max-w-6xl mx-auto px-4 py-6">
           <button
             onClick={onBack}
@@ -121,15 +139,23 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{content.title}</h1>
-              <p className="text-gray-600 mb-4">{content.description}</p>
+              <h1 className={`text-3xl font-bold mb-2 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>{content.title}</h1>
+              <p className={`mb-4 transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>{content.description}</p>
               
               {content.learningObjectives && (
                 <div className="mb-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Learning Objectives:</h3>
+                  <h3 className={`font-semibold mb-2 transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>Learning Objectives:</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {content.learningObjectives.map((objective, index) => (
-                      <div key={index} className="flex items-center text-sm text-gray-600">
+                      <div key={index} className={`flex items-center text-sm transition-colors ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>
                         <Target size={14} className="mr-2 text-green-600" />
                         {objective}
                       </div>
@@ -139,20 +165,31 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
               )}
             </div>
             
-            <div className="bg-white rounded-xl p-6 shadow-lg">
-              <h3 className="font-semibold text-gray-900 mb-4">Chapter Info</h3>
+            <div className={`rounded-xl p-6 shadow-lg transition-colors ${
+              theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+            }`}>
+              <h3 className={`font-semibold mb-4 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>Chapter Info</h3>
               <div className="space-y-3">
-                <div className="flex items-center text-sm text-gray-600">
+                <div className={`flex items-center text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
                   <Clock size={16} className="mr-2 text-blue-600" />
                   Duration: {chapter.duration}
                 </div>
                 {content.estimatedTime && (
-                  <div className="flex items-center text-sm text-gray-600">
+                  <div className={`flex items-center text-sm transition-colors ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
                     <Target size={16} className="mr-2 text-green-600" />
                     Study Time: {content.estimatedTime}
                   </div>
                 )}
                 <div className="flex items-center text-sm text-gray-600">
+                <div className={`flex items-center text-sm transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
                   <BookOpen size={16} className="mr-2 text-purple-600" />
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
@@ -175,7 +212,9 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className={`border-b transition-colors ${
+        theme === 'dark' ? 'bg-slate-800/50 border-gray-700' : 'bg-white border-gray-200'
+      }`}>
         <div className="max-w-6xl mx-auto px-4">
           <nav className="flex space-x-8">
             {tabs.map((tab) => {
@@ -186,8 +225,10 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 text-blue-600' 
+                      : theme === 'dark'
+                        ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
                   <Icon size={16} className="mr-2" />
@@ -206,9 +247,15 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
           <div className="space-y-8">
             {/* Video Section */}
             {videoId && (
-              <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                  <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+              <div className={`rounded-2xl shadow-lg overflow-hidden transition-colors ${
+                theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+              }`}>
+                <div className={`p-6 border-b transition-colors ${
+                  theme === 'dark' ? 'border-gray-700' : 'border-gray-100'
+                }`}>
+                  <h2 className={`text-xl font-semibold flex items-center transition-colors ${
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
+                  }`}>
                     <Play size={20} className="mr-2 text-red-600" />
                     Video Tutorial
                   </h2>
@@ -229,8 +276,12 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
             )}
 
             {/* Main Content */}
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+            <div className={`rounded-2xl shadow-lg p-8 transition-colors ${
+              theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+            }`}>
+              <h2 className={`text-xl font-semibold mb-6 flex items-center transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>
                 <FileText size={20} className="mr-2 text-blue-600" />
                 Chapter Content
               </h2>
@@ -239,18 +290,26 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                 <div className="space-y-8">
                   {content.content.introduction && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Introduction</h3>
+                      <h3 className={`text-lg font-semibold mb-3 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>Introduction</h3>
                       <div className="prose prose-blue max-w-none">
-                        <p className="text-gray-700 leading-relaxed">{content.content.introduction}</p>
+                        <p className={`leading-relaxed transition-colors ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>{content.content.introduction}</p>
                       </div>
                     </div>
                   )}
                   
                   {content.content.mainContent && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Main Content</h3>
+                      <h3 className={`text-lg font-semibold mb-3 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>Main Content</h3>
                       <div className="prose prose-blue max-w-none">
-                        <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        <div className={`leading-relaxed whitespace-pre-wrap transition-colors ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                           {content.content.mainContent}
                         </div>
                       </div>
@@ -258,14 +317,20 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                   )}
                   
                   {content.content.keyPoints && (
-                    <div className="bg-blue-50 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                    <div className={`rounded-xl p-6 transition-colors ${
+                      theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'
+                    }`}>
+                      <h3 className={`text-lg font-semibold mb-4 flex items-center transition-colors ${
+                        theme === 'dark' ? 'text-blue-400' : 'text-blue-900'
+                      }`}>
                         <Lightbulb size={20} className="mr-2" />
                         Key Points
                       </h3>
                       <ul className="space-y-2">
                         {content.content.keyPoints.map((point, index) => (
-                          <li key={index} className="flex items-start text-blue-800">
+                          <li key={index} className={`flex items-start transition-colors ${
+                            theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+                          }`}>
                             <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                             {point}
                           </li>
@@ -275,15 +340,23 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                   )}
                   
                   {content.content.summary && (
-                    <div className="bg-gray-50 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Summary</h3>
-                      <p className="text-gray-700 leading-relaxed">{content.content.summary}</p>
+                    <div className={`rounded-xl p-6 transition-colors ${
+                      theme === 'dark' ? 'bg-gray-700/30' : 'bg-gray-50'
+                    }`}>
+                      <h3 className={`text-lg font-semibold mb-3 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>Summary</h3>
+                      <p className={`leading-relaxed transition-colors ${
+                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                      }`}>{content.content.summary}</p>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="prose prose-blue max-w-none">
-                  <div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                  <div className={`leading-relaxed whitespace-pre-wrap transition-colors ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
                     {content.content}
                   </div>
                 </div>
@@ -292,17 +365,29 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
 
             {/* Code Examples */}
             {content.codeExamples && content.codeExamples.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+              <div className={`rounded-2xl shadow-lg p-8 transition-colors ${
+                theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+              }`}>
+                <h2 className={`text-xl font-semibold mb-6 flex items-center transition-colors ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>
                   <Code size={20} className="mr-2 text-green-600" />
                   Code Examples
                 </h2>
                 <div className="space-y-6">
                   {content.codeExamples.map((example, index) => (
-                    <div key={index} className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div key={index} className={`border rounded-xl overflow-hidden transition-colors ${
+                      theme === 'dark' ? 'border-gray-600' : 'border-gray-200'
+                    }`}>
                       {example.title && (
-                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                          <h3 className="font-medium text-gray-900">{example.title}</h3>
+                        <div className={`px-4 py-3 border-b transition-colors ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700/30 border-gray-600' 
+                            : 'bg-gray-50 border-gray-200'
+                        }`}>
+                          <h3 className={`font-medium transition-colors ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>{example.title}</h3>
                         </div>
                       )}
                       <div className="bg-gray-900 text-green-400 p-4 overflow-x-auto">
@@ -311,8 +396,12 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                         </pre>
                       </div>
                       {example.explanation && (
-                        <div className="bg-blue-50 px-4 py-3 border-t border-gray-200">
-                          <p className="text-sm text-blue-800">{example.explanation}</p>
+                        <div className={`px-4 py-3 border-t transition-colors ${
+                          theme === 'dark' 
+                            ? 'bg-blue-500/10 border-gray-600 text-blue-300' 
+                            : 'bg-blue-50 border-gray-200 text-blue-800'
+                        }`}>
+                          <p className="text-sm">{example.explanation}</p>
                         </div>
                       )}
                     </div>
@@ -325,8 +414,12 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
 
         {/* Exercises Tab */}
         {activeTab === 'exercises' && (
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+          <div className={`rounded-2xl shadow-lg p-8 transition-colors ${
+            theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+          }`}>
+            <h2 className={`text-xl font-semibold mb-6 flex items-center transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               <Code size={20} className="mr-2 text-purple-600" />
               Practical Exercises
             </h2>
@@ -334,9 +427,13 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
             {content.practicalExercises && content.practicalExercises.length > 0 ? (
               <div className="space-y-6">
                 {content.practicalExercises.map((exercise, index) => (
-                  <div key={index} className="border border-gray-200 rounded-xl p-6">
+                  <div key={index} className={`border rounded-xl p-6 transition-colors ${
+                    theme === 'dark' ? 'border-gray-600 bg-slate-700/30' : 'border-gray-200'
+                  }`}>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">{exercise.title}</h3>
+                      <h3 className={`text-lg font-semibold transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{exercise.title}</h3>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         exercise.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
                         exercise.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -345,14 +442,18 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                         {exercise.difficulty}
                       </span>
                     </div>
-                    <p className="text-gray-700">{exercise.description}</p>
+                    <p className={`transition-colors ${
+                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    }`}>{exercise.description}</p>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
                 <Code size={48} className="mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600">No exercises available for this chapter.</p>
+                <p className={`transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>No exercises available for this chapter.</p>
               </div>
             )}
           </div>
@@ -360,8 +461,12 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
 
         {/* Resources Tab */}
         {activeTab === 'resources' && (
-          <div className="bg-white rounded-2xl shadow-lg p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+          <div className={`rounded-2xl shadow-lg p-8 transition-colors ${
+            theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+          }`}>
+            <h2 className={`text-xl font-semibold mb-6 flex items-center transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
               <ExternalLink size={20} className="mr-2 text-orange-600" />
               Additional Resources
             </h2>
@@ -374,17 +479,29 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
                     href={resource.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-start p-6 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors group"
+                    className={`flex items-start p-6 border rounded-xl transition-colors group ${
+                      theme === 'dark' 
+                        ? 'border-gray-600 bg-slate-700/30 hover:bg-slate-600/30' 
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
                   >
                     <ExternalLink size={20} className="mr-4 text-blue-600 group-hover:text-blue-700 flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-gray-900 group-hover:text-blue-700 mb-2">
+                      <h3 className={`font-semibold group-hover:text-blue-700 mb-2 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
                         {resource.title}
                       </h3>
                       {resource.description && (
-                        <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
+                        <p className={`text-sm mb-2 transition-colors ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>{resource.description}</p>
                       )}
-                      <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium capitalize">
+                      <span className={`inline-flex px-2 py-1 rounded text-xs font-medium capitalize transition-colors ${
+                        theme === 'dark' 
+                          ? 'bg-gray-600 text-gray-300' 
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
                         {resource.type}
                       </span>
                     </div>
@@ -394,16 +511,24 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
             ) : (
               <div className="text-center py-12">
                 <ExternalLink size={48} className="mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600">No additional resources available for this chapter.</p>
+                <p className={`transition-colors ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>No additional resources available for this chapter.</p>
               </div>
             )}
 
             {content.nextSteps && (
-              <div className="mt-8 bg-blue-50 rounded-xl p-6">
-                <h3 className="font-semibold text-blue-900 mb-4">Next Steps</h3>
+              <div className={`mt-8 rounded-xl p-6 transition-colors ${
+                theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'
+              }`}>
+                <h3 className={`font-semibold mb-4 transition-colors ${
+                  theme === 'dark' ? 'text-blue-400' : 'text-blue-900'
+                }`}>Next Steps</h3>
                 <ul className="space-y-2">
                   {content.nextSteps.map((step, index) => (
-                    <li key={index} className="flex items-start text-blue-800">
+                    <li key={index} className={`flex items-start transition-colors ${
+                      theme === 'dark' ? 'text-blue-300' : 'text-blue-800'
+                    }`}>
                       <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
                       {step}
                     </li>
@@ -416,13 +541,21 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({
 
         {/* Quiz Tab */}
         {activeTab === 'quiz' && (
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+          <div className={`rounded-2xl shadow-lg p-8 transition-colors ${
+            theme === 'dark' ? 'bg-slate-800/50' : 'bg-white'
+          }`}>
             <div className="text-center">
-              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+                theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'
+              }`}>
                 <Brain className="w-10 h-10 text-blue-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Test Your Knowledge</h2>
-              <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+              <h2 className={`text-2xl font-bold mb-4 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>Test Your Knowledge</h2>
+              <p className={`mb-8 max-w-2xl mx-auto transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
                 Ready to test what you've learned? Take our AI-generated quiz to assess your understanding 
                 of this chapter and get instant feedback on your progress.
               </p>

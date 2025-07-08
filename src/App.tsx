@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ClerkProvider, useUser } from '@clerk/clerk-react';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import LandingPage from './components/LandingPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -237,13 +238,15 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      <Router>
-        <AuthProvider>
-          <ProtectedRoute fallback={<LandingPage />}>
-            <AppContent />
-          </ProtectedRoute>
-        </AuthProvider>
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <AuthProvider>
+            <ProtectedRoute fallback={<LandingPage />}>
+              <AppContent />
+            </ProtectedRoute>
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
     </ClerkProvider>
   );
 }

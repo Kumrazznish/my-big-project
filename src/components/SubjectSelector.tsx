@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import { Book, Code, Palette, Calculator, Globe, Zap, ArrowRight, Brain, Target, Clock, Users, Sparkles, TrendingUp, Award, CheckCircle, Star } from 'lucide-react';
 
 interface SubjectSelectorProps {
@@ -179,6 +180,7 @@ const learningGoals = [
 ];
 
 const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) => {
+  const { theme } = useTheme();
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
   const [selectedLearningStyle, setSelectedLearningStyle] = useState<string>('');
@@ -232,16 +234,28 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
+        : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+    }`}>
       {/* Header */}
-      <div className="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-10">
+      <div className={`backdrop-blur-xl border-b sticky top-0 z-10 transition-colors ${
+        theme === 'dark' ? 'bg-black/20 border-white/10' : 'bg-white/80 border-gray-200'
+      }`}>
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              <h1 className={`text-3xl font-bold transition-colors ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent' 
+                  : 'text-gray-900'
+              }`}>
                 Personalized Learning Setup
               </h1>
-              <p className="text-gray-400 mt-2">Let's create your perfect learning experience</p>
+              <p className={`mt-2 transition-colors ${
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>Let's create your perfect learning experience</p>
             </div>
             <div className="flex items-center space-x-2">
               {[1, 2, 3, 4, 5].map((step) => (
@@ -252,14 +266,20 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                         ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white scale-110'
                         : step < currentStep
                         ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white'
-                        : 'bg-slate-700 text-gray-400'
+                        : theme === 'dark'
+                          ? 'bg-slate-700 text-gray-400'
+                          : 'bg-gray-200 text-gray-500'
                     }`}
                   >
                     {step < currentStep ? <CheckCircle className="w-5 h-5" /> : step}
                   </div>
                   {step < 5 && (
                     <div className={`w-8 h-1 mx-2 rounded-full transition-all ${
-                      step < currentStep ? 'bg-green-500' : 'bg-slate-700'
+                      step < currentStep 
+                        ? 'bg-green-500' 
+                        : theme === 'dark' 
+                          ? 'bg-slate-700' 
+                          : 'bg-gray-200'
                     }`} />
                   )}
                 </div>
@@ -268,8 +288,12 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
           </div>
           
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-2">{stepTitles[currentStep - 1]}</h2>
-            <div className="w-full bg-slate-700 rounded-full h-2">
+            <h2 className={`text-2xl font-bold mb-2 transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>{stepTitles[currentStep - 1]}</h2>
+            <div className={`w-full rounded-full h-2 ${
+              theme === 'dark' ? 'bg-slate-700' : 'bg-gray-200'
+            }`}>
               <div 
                 className="bg-gradient-to-r from-cyan-500 to-purple-600 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${(currentStep / 5) * 100}%` }}
@@ -284,11 +308,17 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         {currentStep === 1 && (
           <div className="space-y-8">
             <div className="text-center mb-12">
-              <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20 rounded-full px-4 py-2 mb-6">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
-                <span className="text-cyan-400 text-sm font-medium">500K+ Students Learning</span>
+              <div className={`inline-flex items-center space-x-2 border rounded-full px-4 py-2 mb-6 ${
+                theme === 'dark' 
+                  ? 'bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border-cyan-500/20' 
+                  : 'bg-gradient-to-r from-cyan-50 to-purple-50 border-cyan-200'
+              }`}>
+                <Sparkles className="w-4 h-4 text-cyan-500" />
+                <span className="text-cyan-500 text-sm font-medium">500K+ Students Learning</span>
               </div>
-              <p className="text-xl text-gray-300">Select the subject you want to master</p>
+              <p className={`text-xl transition-colors ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>Select the subject you want to master</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -299,8 +329,12 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                     key={subject.id}
                     className={`group relative p-8 rounded-3xl border-2 cursor-pointer transition-all duration-500 hover:scale-105 ${
                       selectedSubject === subject.id
-                        ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
-                        : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                        ? theme === 'dark'
+                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
+                          : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-2xl shadow-cyan-500/20'
+                        : theme === 'dark'
+                          ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                          : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                     }`}
                     onClick={() => setSelectedSubject(subject.id)}
                   >
@@ -310,34 +344,48 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                       </div>
                       
                       <div>
-                        <h3 className="text-xl font-bold text-white mb-2">{subject.name}</h3>
-                        <p className="text-gray-400 mb-4">{subject.description}</p>
+                        <h3 className={`text-xl font-bold mb-2 transition-colors ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>{subject.name}</h3>
+                        <p className={`mb-4 transition-colors ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>{subject.description}</p>
                         
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-1">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            <span className="text-yellow-400 font-medium">{subject.rating}</span>
+                            <span className="text-yellow-500 font-medium">{subject.rating}</span>
                           </div>
-                          <span className="text-cyan-400 font-medium">{subject.students}</span>
+                          <span className="text-cyan-500 font-medium">{subject.students}</span>
                         </div>
                         
                         <div className="flex flex-wrap gap-2 mb-4">
                           {subject.topics.slice(0, 3).map((topic, index) => (
                             <span
                               key={index}
-                              className="px-2 py-1 bg-slate-700 text-gray-300 rounded-lg text-xs font-medium"
+                              className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                theme === 'dark' 
+                                  ? 'bg-slate-700 text-gray-300' 
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
                             >
                               {topic}
                             </span>
                           ))}
                           {subject.topics.length > 3 && (
-                            <span className="px-2 py-1 bg-slate-700 text-gray-300 rounded-lg text-xs font-medium">
+                            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                              theme === 'dark' 
+                                ? 'bg-slate-700 text-gray-300' 
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
                               +{subject.topics.length - 3} more
                             </span>
                           )}
                         </div>
                         
-                        <div className="text-sm text-gray-400">
+                        <div className={`text-sm transition-colors ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
                           {subject.projects} hands-on projects
                         </div>
                       </div>
@@ -359,7 +407,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         {currentStep === 2 && (
           <div className="space-y-8">
             <div className="text-center mb-12">
-              <p className="text-xl text-gray-300">What's your current experience level?</p>
+              <p className={`text-xl transition-colors ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>What's your current experience level?</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -368,8 +418,12 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                   key={difficulty.id}
                   className={`group relative p-8 rounded-3xl border-2 cursor-pointer transition-all duration-500 hover:scale-105 ${
                     selectedDifficulty === difficulty.id
-                      ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
-                      : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                      ? theme === 'dark'
+                        ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
+                        : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-2xl shadow-cyan-500/20'
+                      : theme === 'dark'
+                        ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                        : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                   }`}
                   onClick={() => setSelectedDifficulty(difficulty.id)}
                 >
@@ -378,15 +432,19 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                     <div className={`inline-flex px-6 py-3 rounded-2xl bg-gradient-to-r ${difficulty.color} text-white font-bold text-lg`}>
                       {difficulty.name}
                     </div>
-                    <p className="text-gray-300 text-lg">{difficulty.description}</p>
+                    <p className={`text-lg transition-colors ${
+                      theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                    }`}>{difficulty.description}</p>
                     <div className="space-y-3">
-                      <div className="text-cyan-400 font-medium">Duration: {difficulty.duration}</div>
-                      <div className="text-purple-400 font-medium">{difficulty.timePerWeek}/week</div>
+                      <div className="text-cyan-500 font-medium">Duration: {difficulty.duration}</div>
+                      <div className="text-purple-500 font-medium">{difficulty.timePerWeek}/week</div>
                     </div>
                     <div className="space-y-2">
                       {difficulty.features.map((feature, index) => (
-                        <div key={index} className="flex items-center text-sm text-gray-400">
-                          <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
+                        <div key={index} className={`flex items-center text-sm transition-colors ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                          <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
                           {feature}
                         </div>
                       ))}
@@ -408,7 +466,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         {currentStep === 3 && (
           <div className="space-y-8">
             <div className="text-center mb-12">
-              <p className="text-xl text-gray-300">How do you learn best?</p>
+              <p className={`text-xl transition-colors ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>How do you learn best?</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -417,25 +477,35 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                   key={style.id}
                   className={`group relative p-8 rounded-3xl border-2 cursor-pointer transition-all duration-500 hover:scale-105 ${
                     selectedLearningStyle === style.id
-                      ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
-                      : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                      ? theme === 'dark'
+                        ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
+                        : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-2xl shadow-cyan-500/20'
+                      : theme === 'dark'
+                        ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                        : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                   }`}
                   onClick={() => setSelectedLearningStyle(style.id)}
                 >
                   <div className="flex items-start space-x-6">
                     <div className="text-5xl">{style.icon}</div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-3">{style.name}</h3>
-                      <p className="text-gray-400 mb-4">{style.description}</p>
+                      <h3 className={`text-xl font-bold mb-3 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{style.name}</h3>
+                      <p className={`mb-4 transition-colors ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>{style.description}</p>
                       <div className="space-y-2 mb-4">
                         {style.features.map((feature, index) => (
-                          <div key={index} className="flex items-center text-sm text-gray-400">
-                            <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
+                          <div key={index} className={`flex items-center text-sm transition-colors ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                          }`}>
+                            <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
                             {feature}
                           </div>
                         ))}
                       </div>
-                      <div className="text-cyan-400 font-medium">
+                      <div className="text-cyan-500 font-medium">
                         {style.percentage}% of learners prefer this style
                       </div>
                     </div>
@@ -456,7 +526,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         {currentStep === 4 && (
           <div className="space-y-8">
             <div className="text-center mb-12">
-              <p className="text-xl text-gray-300">How much time can you dedicate to learning?</p>
+              <p className={`text-xl transition-colors ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>How much time can you dedicate to learning?</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -467,18 +539,26 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                     key={commitment.id}
                     className={`group relative p-8 rounded-3xl border-2 cursor-pointer transition-all duration-500 hover:scale-105 ${
                       selectedTimeCommitment === commitment.id
-                        ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
-                        : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                        ? theme === 'dark'
+                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
+                          : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-2xl shadow-cyan-500/20'
+                        : theme === 'dark'
+                          ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                          : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                     }`}
                     onClick={() => setSelectedTimeCommitment(commitment.id)}
                   >
                     <div className="text-center space-y-6">
-                      <Icon size={48} className="mx-auto text-cyan-400" />
-                      <h3 className="text-xl font-bold text-white">{commitment.name}</h3>
-                      <p className="text-gray-400">{commitment.description}</p>
+                      <Icon size={48} className="mx-auto text-cyan-500" />
+                      <h3 className={`text-xl font-bold transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{commitment.name}</h3>
+                      <p className={`transition-colors ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>{commitment.description}</p>
                       <div className="space-y-2">
-                        <div className="text-purple-400 font-medium">Timeline: {commitment.timeline}</div>
-                        <div className="text-cyan-400 font-medium">Ideal for: {commitment.ideal}</div>
+                        <div className="text-purple-500 font-medium">Timeline: {commitment.timeline}</div>
+                        <div className="text-cyan-500 font-medium">Ideal for: {commitment.ideal}</div>
                       </div>
                     </div>
                     
@@ -498,7 +578,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         {currentStep === 5 && (
           <div className="space-y-8">
             <div className="text-center mb-12">
-              <p className="text-xl text-gray-300">What are you hoping to achieve? (Select all that apply)</p>
+              <p className={`text-xl transition-colors ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              }`}>What are you hoping to achieve? (Select all that apply)</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -507,16 +589,24 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                   key={goal.id}
                   className={`group relative p-6 rounded-2xl border-2 cursor-pointer transition-all duration-500 hover:scale-105 ${
                     selectedGoals.includes(goal.id)
-                      ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-xl shadow-cyan-500/20'
-                      : 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                      ? theme === 'dark'
+                        ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-xl shadow-cyan-500/20'
+                        : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-xl shadow-cyan-500/20'
+                      : theme === 'dark'
+                        ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                        : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-lg'
                   }`}
                   onClick={() => handleGoalToggle(goal.id)}
                 >
                   <div className="flex items-center space-x-4">
                     <div className="text-3xl">{goal.icon}</div>
                     <div>
-                      <h3 className="font-bold text-white">{goal.name}</h3>
-                      <p className="text-gray-400 text-sm">{goal.description}</p>
+                      <h3 className={`font-bold transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>{goal.name}</h3>
+                      <p className={`text-sm transition-colors ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>{goal.description}</p>
                     </div>
                   </div>
                   
@@ -532,22 +622,30 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         )}
 
         {/* Navigation */}
-        <div className="flex justify-between items-center mt-16 pt-8 border-t border-white/10">
+        <div className={`flex justify-between items-center mt-16 pt-8 border-t transition-colors ${
+          theme === 'dark' ? 'border-white/10' : 'border-gray-200'
+        }`}>
           <button
             onClick={prevStep}
             disabled={currentStep === 1}
             className={`px-8 py-4 rounded-xl font-semibold transition-all ${
               currentStep === 1
-                ? 'text-gray-600 cursor-not-allowed'
-                : 'text-gray-300 hover:text-white hover:bg-slate-800/50'
+                ? theme === 'dark'
+                  ? 'text-gray-600 cursor-not-allowed'
+                  : 'text-gray-400 cursor-not-allowed'
+                : theme === 'dark'
+                  ? 'text-gray-300 hover:text-white hover:bg-slate-800/50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
             Previous
           </button>
 
           <div className="text-center">
-            <div className="text-gray-400 text-sm mb-2">Step {currentStep} of 5</div>
-            <div className="text-cyan-400 font-medium">
+            <div className={`text-sm mb-2 transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>Step {currentStep} of 5</div>
+            <div className="text-cyan-500 font-medium">
               {currentStep === 5 ? 'Ready to generate your roadmap!' : 'Continue to customize your experience'}
             </div>
           </div>
@@ -559,7 +657,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
               className={`group px-8 py-4 rounded-xl font-semibold transition-all flex items-center space-x-2 ${
                 canProceed()
                   ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:from-cyan-600 hover:to-purple-700 hover:scale-105 shadow-lg hover:shadow-xl'
-                  : 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                  : theme === 'dark'
+                    ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
               <span>Next</span>
@@ -572,7 +672,9 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
               className={`group px-8 py-4 rounded-xl font-semibold transition-all flex items-center space-x-2 ${
                 canProceed()
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 hover:scale-105 shadow-lg hover:shadow-xl'
-                  : 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                  : theme === 'dark'
+                    ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
               <span>Generate My Roadmap</span>
