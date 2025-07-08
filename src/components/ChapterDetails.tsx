@@ -3,6 +3,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { geminiService } from '../services/geminiService';
 import { userService } from '../services/userService';
+import AIStudyAssistant from './AIFeatures/AIStudyAssistant';
+import SmartNotes from './AIFeatures/SmartNotes';
+import ConceptExplainer from './AIFeatures/ConceptExplainer';
+import CodeAnalyzer from './AIFeatures/CodeAnalyzer';
+import ProgressTracker from './AIFeatures/ProgressTracker';
+import StudyPlanner from './AIFeatures/StudyPlanner';
 import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle, Brain, Monitor, Layers, Database, Globe, Shield, Trophy, Timer, BarChart3, Settings, Wifi, Camera, Headphones, Smartphone } from 'lucide-react';
 
 interface Chapter {
@@ -701,7 +707,32 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
             </div>
           </div>
         )}
+
+        {/* AI-Powered Features */}
+        <div className="space-y-12">
+          {/* Smart Notes */}
+          <SmartNotes chapter={chapter} subject={subject} />
+          
+          {/* Concept Explainer */}
+          <ConceptExplainer chapter={chapter} subject={subject} difficulty={difficulty} />
+          
+          {/* Code Analyzer (for programming subjects) */}
+          {(subject.toLowerCase().includes('programming') || 
+            subject.toLowerCase().includes('code') || 
+            subject.toLowerCase().includes('development')) && (
+            <CodeAnalyzer chapter={chapter} subject={subject} />
+          )}
+          
+          {/* Progress Tracker */}
+          <ProgressTracker chapter={chapter} subject={subject} />
+          
+          {/* Study Planner */}
+          <StudyPlanner chapter={chapter} subject={subject} difficulty={difficulty} />
+        </div>
       </div>
+
+      {/* AI Study Assistant - Floating */}
+      <AIStudyAssistant chapter={chapter} subject={subject} difficulty={difficulty} />
     </div>
   );
 };

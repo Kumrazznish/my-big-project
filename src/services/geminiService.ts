@@ -179,6 +179,135 @@ export class GeminiService {
     }
   }
 
+  async makeRequest(prompt: string, retryCount = 0): Promise<string> {
+    if (!API_KEY) {
+      throw new Error('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
+    }
+
+    const maxRetries = 3;
+    const baseDelay = 6000;
+
+    if (!rateLimiter.canMakeRequest()) {
+      const waitTime = rateLimiter.getWaitTime();
+      throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+    }
+
+    try {
+      rateLimiter.recordRequest();
+      console.log(`Making Gemini API request (attempt ${retryCount + 1}/${maxRetries + 1})`);
+
+      const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 8192,
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API Error ${response.status}:`, errorText);
+        
+        if (response.status === 429) {
+          if (retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 3000;
+            console.log(`Rate limited. Retrying in ${Math.ceil(delay / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.makeRequest(prompt, retryCount + 1);
+          } else {
+            throw new Error('Rate limit exceeded. Please wait a few minutes and try again.');
+          }
+        }
+        
+        if (response.status === 503 || response.status === 500) {
+          if (retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 4000;
+            console.log(`Service error. Retrying in ${Math.ceil(delay / 1000)}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.makeRequest(prompt, retryCount + 1);
+          } else {
+            throw new Error('The AI service is currently experiencing issues. Please try again later.');
+          }
+        }
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error && errorData.error.message) {
+            if (errorData.error.message.includes('quota') || errorData.error.message.includes('limit')) {
+              throw new Error('API quota exceeded. Please wait before trying again.');
+            }
+            throw new Error(`API Error: ${errorData.error.message}`);
+          }
+        } catch (parseError) {
+          // Continue with generic error handling
+        }
+        
+        switch (response.status) {
+          case 400:
+            throw new Error('Invalid request format. Please try again.');
+          case 401:
+            throw new Error('API authentication failed. Please check your API key.');
+          case 403:
+            throw new Error('Access forbidden. Please check your API permissions.');
+          default:
+            throw new Error(`Service temporarily unavailable (${response.status}). Please try again later.`);
+        }
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        throw new Error('Invalid response structure from AI service.');
+      }
+
+      const content = data.candidates[0].content;
+      if (!content.parts || !content.parts[0] || !content.parts[0].text) {
+        throw new Error('No content received from AI service.');
+      }
+
+      console.log('Successfully received response from Gemini API');
+      return content.parts[0].text;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Gemini API Error:', error.message);
+        throw error;
+      } else {
+        console.error('Unknown Gemini API Error:', error);
+        throw new Error('An unexpected error occurred while communicating with the AI service.');
+      }
+    }
+  }
+
   private cleanJsonResponse(response: string): string {
     let cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     cleaned = cleaned.trim();
