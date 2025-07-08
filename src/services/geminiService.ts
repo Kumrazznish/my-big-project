@@ -1,6 +1,35 @@
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
+// Rate limiting configuration
+class RateLimiter {
+  private requests: number[] = [];
+  private readonly maxRequests = 15; // Gemini free tier allows 15 requests per minute
+  private readonly timeWindow = 60000; // 1 minute in milliseconds
+
+  canMakeRequest(): boolean {
+    const now = Date.now();
+    // Remove requests older than the time window
+    this.requests = this.requests.filter(time => now - time < this.timeWindow);
+    
+    return this.requests.length < this.maxRequests;
+  }
+
+  recordRequest(): void {
+    this.requests.push(Date.now());
+  }
+
+  getWaitTime(): number {
+    if (this.requests.length === 0) return 0;
+    
+    const oldestRequest = Math.min(...this.requests);
+    const waitTime = this.timeWindow - (Date.now() - oldestRequest);
+    return Math.max(0, waitTime);
+  }
+}
+
+const rateLimiter = new RateLimiter();
+
 export class GeminiService {
   private async makeRequest(prompt: string, retryCount = 0): Promise<string> {
     if (!API_KEY) {
@@ -8,9 +37,20 @@ export class GeminiService {
     }
 
     const maxRetries = 5;
-    const baseDelay = 3000; // 3 seconds
+    const baseDelay = 2000; // 2 seconds
+
+    // Check rate limiting before making request
+    if (!rateLimiter.canMakeRequest()) {
+      const waitTime = rateLimiter.getWaitTime();
+      if (waitTime > 0) {
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+      }
+    }
 
     try {
+      // Record the request attempt
+      rateLimiter.recordRequest();
+
       const response = await fetch(`${API_URL}?key=${API_KEY}`, {
         method: 'POST',
         headers: {
@@ -52,50 +92,66 @@ export class GeminiService {
       if (!response.ok) {
         const errorText = await response.text();
         
-        // Check if it's a 503 (service overloaded) error and we haven't exceeded max retries
-        if (response.status === 503 && retryCount < maxRetries) {
-          const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
-          console.log(`Gemini API overloaded. Retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-          
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return this.makeRequest(prompt, retryCount + 1);
+        // Handle different error types with appropriate retry logic
+        if (response.status === 429) {
+          if (retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 1000; // Add jitter
+            console.log(`Rate limited. Retrying in ${Math.ceil(delay / 1000)}s... (attempt ${retryCount + 1}/${maxRetries})`);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.makeRequest(prompt, retryCount + 1);
+          } else {
+            throw new Error('Rate limit exceeded. The service is currently experiencing high demand. Please try again in a few minutes.');
+          }
         }
         
-        // Try to parse the error response as JSON to extract a cleaner message
+        if (response.status === 503) {
+          if (retryCount < maxRetries) {
+            const delay = baseDelay * Math.pow(2, retryCount) + Math.random() * 2000; // Longer delay for service issues
+            console.log(`Service overloaded. Retrying in ${Math.ceil(delay / 1000)}s... (attempt ${retryCount + 1}/${maxRetries})`);
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return this.makeRequest(prompt, retryCount + 1);
+          } else {
+            throw new Error('The AI service is currently overloaded. Please try again in a few minutes.');
+          }
+        }
+        
+        // Try to parse error response for better error messages
         try {
           const errorData = JSON.parse(errorText);
           if (errorData.error && errorData.error.message) {
-            // Provide more user-friendly error messages for common issues
-            if (response.status === 503) {
-              throw new Error('The AI service is currently experiencing high demand. Please try again in a few moments.');
+            if (errorData.error.message.includes('quota')) {
+              throw new Error('API quota exceeded. Please try again later or check your API key limits.');
             }
-            if (response.status === 429) {
-              throw new Error('Rate limit exceeded. Please wait a moment before trying again.');
+            if (errorData.error.message.includes('invalid')) {
+              throw new Error('Invalid request. Please try again with different parameters.');
             }
             throw new Error(errorData.error.message);
           }
         } catch (parseError) {
-          // If parsing fails, fall back to the original error format
+          // If parsing fails, provide generic error based on status code
         }
         
         // Provide user-friendly error messages for different status codes
-        if (response.status === 503) {
-          throw new Error('The AI service is currently experiencing high demand. Please try again in a few moments.');
-        } else if (response.status === 429) {
-          throw new Error('Too many requests. Please wait a moment before trying again.');
-        } else if (response.status === 401) {
-          throw new Error('API authentication failed. Please check your API key configuration.');
-        } else if (response.status === 400) {
-          throw new Error('Invalid request. Please try again with different parameters.');
-        } else {
-          throw new Error(`Service temporarily unavailable (${response.status}). Please try again later.`);
+        switch (response.status) {
+          case 400:
+            throw new Error('Invalid request format. Please try again.');
+          case 401:
+            throw new Error('API authentication failed. Please check your API key configuration.');
+          case 403:
+            throw new Error('Access forbidden. Please check your API key permissions.');
+          case 404:
+            throw new Error('API endpoint not found. Please try again later.');
+          default:
+            throw new Error(`Service temporarily unavailable (${response.status}). Please try again in a few moments.`);
         }
       }
 
       const data = await response.json();
       
       if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response structure from Gemini API. Please try again.');
+        throw new Error('Invalid response structure from AI service. Please try again.');
       }
 
       const content = data.candidates[0].content;
@@ -195,6 +251,9 @@ export class GeminiService {
   }
 
   async generateRoadmap(subject: string, difficulty: string): Promise<any> {
+    // Add a small delay before making the request to help with rate limiting
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     // Get learning preferences from localStorage
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
@@ -283,6 +342,9 @@ Return ONLY the JSON object, no additional text or formatting.`;
   }
 
   async generateCourseContent(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
+    // Add delay to help with rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
     const prompt = `Create comprehensive course content for "${chapterTitle}" in ${subject} at ${difficulty} level.
@@ -312,7 +374,7 @@ Please respond with ONLY a valid JSON object in this exact format:
     ],
     "summary": "In this chapter, we covered the essential aspects of ${chapterTitle} in ${subject}. You learned about the core concepts, saw practical examples, and understand how to apply this knowledge. The key takeaways include understanding the fundamentals, recognizing patterns, and being able to implement these concepts in your own projects."
   },
-  "videoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "videoUrl": "https://www.youtube.com/results?search_query=${encodeURIComponent(chapterTitle + ' ' + subject + ' tutorial')}",
   "codeExamples": [
     {
       "title": "Basic Example: ${chapterTitle}",
@@ -390,6 +452,9 @@ Return ONLY the JSON object, no additional text or formatting.`;
   }
 
   async generateQuiz(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
+    // Add delay to help with rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
     const prompt = `Create a comprehensive quiz for "${chapterTitle}" in ${subject} at ${difficulty} level.
 
 Please respond with ONLY a valid JSON object in this exact format:
@@ -459,6 +524,19 @@ Return ONLY the JSON object, no additional text or formatting.`;
       console.error('Raw response:', response);
       throw new Error('Failed to parse quiz response. The AI service returned invalid data. Please try again.');
     }
+  }
+
+  // Method to check current rate limit status
+  getRateLimitStatus(): { canMakeRequest: boolean; waitTime: number; requestsRemaining: number } {
+    const canMakeRequest = rateLimiter.canMakeRequest();
+    const waitTime = rateLimiter.getWaitTime();
+    const requestsRemaining = Math.max(0, rateLimiter['maxRequests'] - rateLimiter['requests'].length);
+    
+    return {
+      canMakeRequest,
+      waitTime,
+      requestsRemaining
+    };
   }
 }
 

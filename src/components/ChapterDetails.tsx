@@ -5,6 +5,8 @@ import { geminiService } from '../services/geminiService';
 import { userService } from '../services/userService';
 import { Book, Clock, CheckCircle, Play, ArrowLeft, Code, Lightbulb, Target, ExternalLink, Download, BookOpen, Video, FileText, Link, Zap, Award, Star, ChevronRight, Copy, Check, Youtube, AlertCircle, Brain } from 'lucide-react';
 
+import { geminiService } from '../services/geminiService';
+
 interface Chapter {
   id: string;
   title: string;
@@ -83,6 +85,12 @@ const ChapterDetails: React.FC<ChapterDetailsProps> = ({ chapter, subject, diffi
     setError(null);
     
     try {
+      // Check rate limit status before making request
+      const rateLimitStatus = geminiService.getRateLimitStatus();
+      if (!rateLimitStatus.canMakeRequest) {
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
+      }
+      
       const content = await geminiService.generateCourseContent(chapter.title, subject, difficulty);
       setCourseContent(content);
       setRetryCount(0);

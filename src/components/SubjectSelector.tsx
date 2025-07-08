@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { Book, Code, Palette, Calculator, Globe, Zap, ArrowRight, Brain, Target, Clock, Users, Sparkles, TrendingUp, Award, CheckCircle, Star } from 'lucide-react';
 
+import { geminiService } from '../services/geminiService';
+
 interface SubjectSelectorProps {
   onSubjectSelect: (subject: string, difficulty: string, learningStyle: string, timeCommitment: string, goals: string[]) => void;
 }
@@ -187,6 +189,20 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
   const [selectedTimeCommitment, setSelectedTimeCommitment] = useState<string>('');
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [currentStep, setCurrentStep] = useState(1);
+  const [rateLimitStatus, setRateLimitStatus] = useState({ canMakeRequest: true, waitTime: 0, requestsRemaining: 15 });
+
+  // Check rate limit status periodically
+  useEffect(() => {
+    const checkRateLimit = () => {
+      const status = geminiService.getRateLimitStatus();
+      setRateLimitStatus(status);
+    };
+
+    checkRateLimit();
+    const interval = setInterval(checkRateLimit, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleGoalToggle = (goalId: string) => {
     setSelectedGoals(prev => 
@@ -198,6 +214,11 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
 
   const handleSubmit = () => {
     if (selectedSubject && selectedDifficulty && selectedLearningStyle && selectedTimeCommitment && selectedGoals.length > 0) {
+      // Check rate limit before proceeding
+      if (!rateLimitStatus.canMakeRequest) {
+        alert(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before generating your roadmap.`);
+        return;
+      }
       onSubjectSelect(selectedSubject, selectedDifficulty, selectedLearningStyle, selectedTimeCommitment, selectedGoals);
     }
   };
@@ -668,18 +689,32 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
           ) : (
             <button
               onClick={handleSubmit}
-              disabled={!canProceed()}
+              disabled={!canProceed() || !rateLimitStatus.canMakeRequest}
               className={`group px-8 py-4 rounded-xl font-semibold transition-all flex items-center space-x-2 ${
-                canProceed()
+                canProceed() && rateLimitStatus.canMakeRequest
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 hover:scale-105 shadow-lg hover:shadow-xl'
                   : theme === 'dark'
                     ? 'bg-slate-700 text-gray-500 cursor-not-allowed'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}
             >
-              <span>Generate My Roadmap</span>
+              <span>
+                {!rateLimitStatus.canMakeRequest 
+                  ? `Wait ${Math.ceil(rateLimitStatus.waitTime / 1000)}s` 
+                  : 'Generate My Roadmap'
+                }
+              </span>
               <Sparkles size={20} className="group-hover:scale-110 transition-transform" />
             </button>
+          )}
+          
+          {/* Rate limit indicator */}
+          {!rateLimitStatus.canMakeRequest && (
+            <div className={`mt-4 text-center text-sm transition-colors ${
+              theme === 'dark' ? 'text-orange-400' : 'text-orange-600'
+            }`}>
+              Rate limit reached. Please wait {Math.ceil(rateLimitStatus.waitTime / 1000)} seconds.
+            </div>
           )}
         </div>
       </div>

@@ -88,6 +88,12 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     setError(null);
     
     try {
+      // Check rate limit status before making request
+      const rateLimitStatus = geminiService.getRateLimitStatus();
+      if (!rateLimitStatus.canMakeRequest) {
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
+      }
+      
       const roadmapData = await geminiService.generateRoadmap(subject, difficulty);
       setRoadmap(roadmapData);
       
@@ -134,6 +140,12 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     setError(null);
     
     try {
+      // Check rate limit before starting course generation
+      const rateLimitStatus = geminiService.getRateLimitStatus();
+      if (!rateLimitStatus.canMakeRequest) {
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
+      }
+      
       const courseChapters = [];
       
       // Generate detailed content and quiz for each chapter
@@ -162,9 +174,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           completed: false
         });
         
-        // Small delay to avoid overwhelming the API
+        // Longer delay between requests to respect rate limits
         if (i < roadmap.chapters.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
       

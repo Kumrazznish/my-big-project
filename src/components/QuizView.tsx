@@ -3,6 +3,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { geminiService } from '../services/geminiService';
 import { CheckCircle, XCircle, Clock, ArrowRight, ArrowLeft, RotateCcw, Award, Target, Zap, Brain, AlertCircle, Trophy, Star, TrendingUp } from 'lucide-react';
 
+import { geminiService } from '../services/geminiService';
+
 interface Question {
   id: string;
   type: string;
@@ -86,6 +88,12 @@ const QuizView: React.FC<QuizViewProps> = ({ chapter, subject, difficulty, onBac
     setError(null);
     
     try {
+      // Check rate limit status before making request
+      const rateLimitStatus = geminiService.getRateLimitStatus();
+      if (!rateLimitStatus.canMakeRequest) {
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before trying again.`);
+      }
+      
       const quizData = await geminiService.generateQuiz(chapter.title, subject, difficulty);
       setQuiz(quizData);
       setSelectedAnswers(new Array(quizData.questions.length).fill(-1));
