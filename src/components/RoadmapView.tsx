@@ -654,7 +654,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         </div>
 
         {/* Generate Detailed Course Button */}
-        {!detailedCourse && !generatingCourse && (
+        {!detailedCourse && !generatingCourse && user && (
           <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-12 text-center transition-colors ${
             theme === 'dark' 
               ? 'bg-slate-800/50 border-white/10' 
@@ -965,66 +965,23 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
           </div>
         </div>
 
-        {/* Course Summary */}
-        <div className={`backdrop-blur-xl border rounded-3xl p-10 transition-colors ${
-          theme === 'dark' 
-            ? 'bg-slate-800/50 border-white/10' 
-            : 'bg-white/80 border-gray-200'
-        }`}>
-          <h2 className={`text-3xl font-bold mb-10 text-center transition-colors ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
-            Course Summary
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <BookOpen className="w-10 h-10 text-white" />
-              </div>
-              <div className="text-4xl font-bold text-blue-500 mb-3">{totalChapters}</div>
-              <div className={`text-lg font-medium transition-colors ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>Total Chapters</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <Trophy className="w-10 h-10 text-white" />
-              </div>
-              <div className="text-4xl font-bold text-green-500 mb-3">
-                {roadmap.chapters.reduce((acc, chapter) => acc + chapter.practicalProjects.length, 0)}
-              </div>
-              <div className={`text-lg font-medium transition-colors ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>Practical Projects</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <Zap className="w-10 h-10 text-white" />
-              </div>
-              <div className="text-4xl font-bold text-purple-500 mb-3">
-                {roadmap.chapters.reduce((acc, chapter) => acc + chapter.skills.length, 0)}
-              </div>
-              <div className={`text-lg font-medium transition-colors ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>Skills to Master</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-20 h-20 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                <Award className="w-10 h-10 text-white" />
-              </div>
-              <div className="text-4xl font-bold text-orange-500 mb-3">
-                {detailedCourse ? detailedCourse.chapters.length : 0}
-              </div>
-              <div className={`text-lg font-medium transition-colors ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>Enhanced Lessons</div>
-            </div>
+        {/* Generate Detailed Course Button for bottom */}
+        {!detailedCourse && !generatingCourse && user && (
+          <div className="text-center">
+            <button
+              onClick={generateDetailedCourse}
+              className="px-16 py-6 rounded-2xl font-bold text-2xl transition-all duration-300 flex items-center space-x-4 mx-auto bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 hover:scale-105 shadow-2xl hover:shadow-purple-500/25"
+            >
+              <Sparkles className="w-10 h-10" />
+              <span>Generate Detailed Course</span>
+            </button>
+            <p className={`mt-4 text-lg transition-colors ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>
+              Create comprehensive lessons with videos, code examples, and interactive quizzes
+            </p>
           </div>
-        </div>
+        )}
       </div>
 
       {/* SVG Gradients */}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
-import { Book, Code, Palette, Calculator, Globe, Zap, ArrowRight, Brain, Target, Clock, Users, Sparkles, TrendingUp, Award, CheckCircle, Star } from 'lucide-react';
+import { Book, Code, Palette, Calculator, Globe, Zap, ArrowRight, Brain, Target, Clock, Users, Sparkles, TrendingUp, Award, CheckCircle, Star, Plus, Edit3 } from 'lucide-react';
 
 import { geminiService } from '../services/geminiService';
 
@@ -9,7 +9,7 @@ interface SubjectSelectorProps {
   onSubjectSelect: (subject: string, difficulty: string, learningStyle: string, timeCommitment: string, goals: string[]) => void;
 }
 
-const subjects = [
+const predefinedSubjects = [
   {
     id: 'programming',
     name: 'Programming & Development',
@@ -185,6 +185,8 @@ const learningGoals = [
 const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) => {
   const { theme } = useTheme();
   const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [customSubject, setCustomSubject] = useState<string>('');
+  const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
   const [selectedLearningStyle, setSelectedLearningStyle] = useState<string>('');
   const [selectedTimeCommitment, setSelectedTimeCommitment] = useState<string>('');
@@ -220,10 +222,23 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
     );
   };
 
+  const handleSubjectSelect = (subjectId: string) => {
+    setSelectedSubject(subjectId);
+    setIsCustomSubject(false);
+    setCustomSubject('');
+  };
+
+  const handleCustomSubjectToggle = () => {
+    setIsCustomSubject(true);
+    setSelectedSubject('');
+  };
+
   const handleSubmit = () => {
-    if (selectedSubject && selectedDifficulty && selectedLearningStyle && selectedTimeCommitment && selectedGoals.length > 0) {
+    const finalSubject = isCustomSubject ? customSubject : selectedSubject;
+    
+    if (finalSubject && selectedDifficulty && selectedLearningStyle && selectedTimeCommitment && selectedGoals.length > 0) {
       console.log('Submitting subject selection:', {
-        selectedSubject,
+        selectedSubject: finalSubject,
         selectedDifficulty,
         selectedLearningStyle,
         selectedTimeCommitment,
@@ -237,13 +252,13 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
       }
       
       setIsLoading(true);
-      onSubjectSelect(selectedSubject, selectedDifficulty, selectedLearningStyle, selectedTimeCommitment, selectedGoals);
+      onSubjectSelect(finalSubject, selectedDifficulty, selectedLearningStyle, selectedTimeCommitment, selectedGoals);
     }
   };
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1: return selectedSubject;
+      case 1: return isCustomSubject ? customSubject.trim() : selectedSubject;
       case 2: return selectedDifficulty;
       case 3: return selectedLearningStyle;
       case 4: return selectedTimeCommitment;
@@ -357,11 +372,82 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
               </div>
               <p className={`text-xl transition-colors ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>Select the subject you want to master</p>
+              }`}>Select a subject or create your own custom learning path</p>
             </div>
             
+            {/* Custom Subject Option */}
+            <div className={`backdrop-blur-xl border-2 rounded-3xl p-8 mb-8 transition-all duration-500 ${
+              isCustomSubject
+                ? theme === 'dark'
+                  ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 shadow-2xl shadow-cyan-500/20'
+                  : 'border-cyan-400 bg-gradient-to-br from-cyan-50 to-purple-50 shadow-2xl shadow-cyan-500/20'
+                : theme === 'dark'
+                  ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
+                  : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
+            }`}>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                    <Edit3 className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-bold transition-colors ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>Custom Subject</h3>
+                    <p className={`transition-colors ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                    }`}>Create a personalized learning path for any topic</p>
+                  </div>
+                </div>
+                {isCustomSubject && (
+                  <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </div>
+              
+              {isCustomSubject ? (
+                <div className="space-y-4">
+                  <input
+                    type="text"
+                    placeholder="Enter your subject (e.g., Machine Learning, Digital Marketing, Photography...)"
+                    value={customSubject}
+                    onChange={(e) => setCustomSubject(e.target.value)}
+                    className={`w-full p-4 rounded-xl border text-lg transition-colors ${
+                      theme === 'dark' 
+                        ? 'bg-slate-700 border-white/10 text-white placeholder-gray-400' 
+                        : 'bg-white border-gray-200 text-gray-900 placeholder-gray-500'
+                    }`}
+                    autoFocus
+                  />
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => setIsCustomSubject(false)}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        theme === 'dark' 
+                          ? 'text-gray-400 hover:text-white hover:bg-slate-600' 
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                    <span className="text-cyan-500 text-sm">✨ AI will create a custom roadmap for your subject</span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleCustomSubjectToggle}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-4 rounded-xl hover:from-purple-600 hover:to-pink-700 transition-all duration-300 font-semibold text-lg flex items-center justify-center space-x-3"
+                >
+                  <Plus className="w-6 h-6" />
+                  <span>Create Custom Subject</span>
+                </button>
+              )}
+            </div>
+
+            {/* Predefined Subjects */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {subjects.map((subject) => {
+              {predefinedSubjects.map((subject) => {
                 const Icon = subject.icon;
                 return (
                   <div
@@ -375,7 +461,7 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
                           ? 'border-white/10 bg-slate-800/50 hover:border-cyan-500/30'
                           : 'border-gray-200 bg-white/80 hover:border-cyan-300 hover:shadow-xl'
                     }`}
-                    onClick={() => setSelectedSubject(subject.id)}
+                    onClick={() => handleSubjectSelect(subject.id)}
                   >
                     <div className="space-y-6">
                       <div className={`w-20 h-20 rounded-2xl bg-gradient-to-r ${subject.color} flex items-center justify-center text-white shadow-2xl group-hover:scale-110 transition-transform`}>
@@ -731,26 +817,26 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
               )}
             </button>
           )}
-          
-          {/* Rate limit indicator */}
-          {!rateLimitStatus.canMakeRequest && (
-            <div className={`mt-4 p-4 rounded-xl border text-center transition-colors ${
-              theme === 'dark' 
-                ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' 
-                : 'bg-orange-50 border-orange-200 text-orange-600'
-            }`}>
-              <p className="font-medium mb-2">API Rate Limit Reached</p>
-              <p className="text-sm">Please wait {Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before generating a roadmap.</p>
-            </div>
-          )}
-          
-          <div className={`mt-2 text-center text-xs transition-colors ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        </div>
+
+        {/* Rate limit indicator */}
+        {!rateLimitStatus.canMakeRequest && (
+          <div className={`mt-4 p-4 rounded-xl border text-center transition-colors ${
+            theme === 'dark' 
+              ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' 
+              : 'bg-orange-50 border-orange-200 text-orange-600'
           }`}>
-            <div className="flex items-center justify-center space-x-3 flex-wrap gap-1">
-              <span>API Keys: {rateLimitStatus.activeKeys}</span>
-              <span>Requests Available: {rateLimitStatus.requestsRemaining}</span>
-            </div>
+            <p className="font-medium mb-2">API Rate Limit Reached</p>
+            <p className="text-sm">Please wait {Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before generating a roadmap.</p>
+          </div>
+        )}
+        
+        <div className={`mt-2 text-center text-xs transition-colors ${
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+        }`}>
+          <div className="flex items-center justify-center space-x-3 flex-wrap gap-1">
+            <span>API Keys: {rateLimitStatus.activeKeys}</span>
+            <span>Requests Available: {rateLimitStatus.requestsRemaining}</span>
           </div>
         </div>
       </div>
