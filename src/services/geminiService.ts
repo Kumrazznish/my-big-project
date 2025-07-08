@@ -3,16 +3,16 @@ const API_KEYS = [
   import.meta.env.VITE_GEMINI_API_KEY_2
 ].filter(Boolean); // Remove any undefined keys
 
-const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
-// Enhanced rate limiting with multiple API keys and stack overflow prevention
+// Enhanced rate limiting with multiple API keys and better error handling
 class MultiKeyRateLimiter {
   private keyUsage: Map<string, { requests: number[]; lastRequest: number; consecutiveErrors: number }> = new Map();
   private currentKeyIndex = 0;
-  private readonly maxRequestsPerKey = 20; // Increased limit
+  private readonly maxRequestsPerKey = 15; // Conservative limit for Gemini 2.0 Flash
   private readonly timeWindow = 60000; // 1 minute
-  private readonly minInterval = 1500; // 1.5 seconds between requests
-  private readonly maxConsecutiveErrors = 3; // Max errors before switching keys
+  private readonly minInterval = 2000; // 2 seconds between requests
+  private readonly maxConsecutiveErrors = 2; // Max errors before switching keys
 
   constructor() {
     // Initialize tracking for each API key
@@ -25,10 +25,14 @@ class MultiKeyRateLimiter {
         });
       }
     });
+    console.log(`Initialized rate limiter with ${API_KEYS.length} API keys`);
   }
 
   getAvailableKey(): string | null {
-    if (API_KEYS.length === 0) return null;
+    if (API_KEYS.length === 0) {
+      console.error('No API keys available');
+      return null;
+    }
 
     const now = Date.now();
     
@@ -50,10 +54,12 @@ class MultiKeyRateLimiter {
       
       if (canUseKey) {
         this.currentKeyIndex = keyIndex;
+        console.log(`Using API key ${keyIndex + 1} (requests: ${usage.requests.length}/${this.maxRequestsPerKey}, errors: ${usage.consecutiveErrors})`);
         return key;
       }
     }
     
+    console.warn('No available API keys found');
     return null;
   }
 
@@ -70,6 +76,7 @@ class MultiKeyRateLimiter {
     const usage = this.keyUsage.get(apiKey);
     if (usage) {
       usage.consecutiveErrors++;
+      console.warn(`Recorded error for key ending in ...${apiKey.slice(-8)} (errors: ${usage.consecutiveErrors})`);
     }
   }
 
@@ -173,6 +180,7 @@ class MultiKeyRateLimiter {
     this.keyUsage.forEach(usage => {
       usage.consecutiveErrors = 0;
     });
+    console.log('Reset all error counts');
   }
 }
 
@@ -186,7 +194,41 @@ export class GeminiService {
       console.log(`Making Gemini API request (attempt ${attempt}/${maxAttempts}) with key ending in ...${apiKey.slice(-8)}`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+
+      const requestBody = {
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3, // Lower temperature for more consistent JSON
+          topK: 20,
+          topP: 0.8,
+          maxOutputTokens: 8192,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
+      };
+
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
       const response = await fetch(`${API_URL}?key=${apiKey}`, {
         method: 'POST',
@@ -194,40 +236,12 @@ export class GeminiService {
           'Content-Type': 'application/json',
         },
         signal: controller.signal,
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 8192,
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
-        })
+        body: JSON.stringify(requestBody)
       });
 
       clearTimeout(timeoutId);
+
+      console.log(`Response status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -235,65 +249,84 @@ export class GeminiService {
         
         rateLimiter.recordError(apiKey);
         
-        if (response.status === 429) {
-          throw new Error(`RATE_LIMIT:${apiKey}`);
-        }
-        
-        if (response.status === 503 || response.status === 500) {
-          throw new Error(`SERVICE_ERROR:${apiKey}`);
-        }
-        
-        // Try to parse error message
+        // Parse error details
+        let errorMessage = `HTTP ${response.status}`;
         try {
           const errorData = JSON.parse(errorText);
           if (errorData.error && errorData.error.message) {
-            if (errorData.error.message.includes('quota') || errorData.error.message.includes('limit')) {
-              throw new Error(`QUOTA_EXCEEDED:${apiKey}`);
-            }
-            throw new Error(`API_ERROR:${errorData.error.message}`);
+            errorMessage = errorData.error.message;
           }
         } catch (parseError) {
-          // Continue with generic error handling
+          errorMessage = errorText || errorMessage;
         }
         
-        switch (response.status) {
-          case 400:
-            throw new Error('INVALID_REQUEST:Invalid request format');
-          case 401:
-            throw new Error(`AUTH_FAILED:${apiKey}`);
-          case 403:
-            throw new Error(`ACCESS_FORBIDDEN:${apiKey}`);
-          default:
-            throw new Error(`SERVICE_UNAVAILABLE:${response.status}`);
+        if (response.status === 429) {
+          throw new Error(`RATE_LIMIT: ${errorMessage}`);
         }
+        
+        if (response.status === 503 || response.status === 500) {
+          throw new Error(`SERVICE_ERROR: ${errorMessage}`);
+        }
+        
+        if (response.status === 400) {
+          throw new Error(`INVALID_REQUEST: ${errorMessage}`);
+        }
+        
+        if (response.status === 401 || response.status === 403) {
+          throw new Error(`AUTH_ERROR: ${errorMessage}`);
+        }
+        
+        throw new Error(`API_ERROR: ${errorMessage}`);
       }
 
       const data = await response.json();
+      console.log('Response data structure:', JSON.stringify(data, null, 2));
       
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('INVALID_RESPONSE:Invalid response structure from AI service');
+      if (!data.candidates || !data.candidates[0]) {
+        console.error('Invalid response structure:', data);
+        throw new Error('INVALID_RESPONSE: No candidates in response');
       }
 
-      const content = data.candidates[0].content;
-      if (!content.parts || !content.parts[0] || !content.parts[0].text) {
-        throw new Error('NO_CONTENT:No content received from AI service');
+      const candidate = data.candidates[0];
+      
+      // Check for content filtering
+      if (candidate.finishReason === 'SAFETY') {
+        throw new Error('CONTENT_FILTERED: Response was filtered for safety reasons');
+      }
+      
+      if (candidate.finishReason === 'RECITATION') {
+        throw new Error('CONTENT_FILTERED: Response was filtered for recitation');
+      }
+
+      if (!candidate.content || !candidate.content.parts || !candidate.content.parts[0]) {
+        console.error('Invalid content structure:', candidate);
+        throw new Error('NO_CONTENT: No content in response');
+      }
+
+      const content = candidate.content.parts[0].text;
+      if (!content || content.trim().length === 0) {
+        throw new Error('EMPTY_CONTENT: Empty response from AI service');
       }
 
       rateLimiter.recordSuccess(apiKey);
       console.log(`Successfully received response from Gemini API using key ...${apiKey.slice(-8)}`);
-      return content.parts[0].text;
+      console.log('Response content preview:', content.substring(0, 200) + '...');
+      
+      return content;
 
     } catch (error) {
+      console.error(`Request failed with key ...${apiKey.slice(-8)}:`, error);
+      
       if (error instanceof Error) {
         const errorMessage = error.message;
         
-        // Handle specific error types
-        if (errorMessage.startsWith('RATE_LIMIT:') || 
-            errorMessage.startsWith('SERVICE_ERROR:') || 
-            errorMessage.startsWith('QUOTA_EXCEEDED:')) {
+        // Handle specific error types with retry logic
+        if (errorMessage.includes('RATE_LIMIT') || 
+            errorMessage.includes('SERVICE_ERROR') || 
+            errorMessage.includes('QUOTA_EXCEEDED')) {
           
           if (attempt < maxAttempts) {
-            const delay = 2000 * attempt + Math.random() * 1000;
+            const delay = 3000 * attempt + Math.random() * 2000; // Longer delays
             console.log(`Retrying request in ${delay}ms due to: ${errorMessage.split(':')[0]}`);
             await new Promise(resolve => setTimeout(resolve, delay));
             return this.makeRequestWithKey(prompt, apiKey, attempt + 1);
@@ -302,7 +335,7 @@ export class GeminiService {
         
         throw error;
       } else {
-        throw new Error('UNKNOWN_ERROR:An unexpected error occurred');
+        throw new Error('UNKNOWN_ERROR: An unexpected error occurred');
       }
     }
   }
@@ -312,7 +345,9 @@ export class GeminiService {
       throw new Error('No Gemini API keys configured. Please add VITE_GEMINI_API_KEY and optionally VITE_GEMINI_API_KEY_2 to your .env file.');
     }
 
-    const maxKeyAttempts = API_KEYS.length * 2; // Try each key twice
+    console.log(`Starting request with ${API_KEYS.length} available API keys`);
+
+    const maxKeyAttempts = API_KEYS.length * 3; // Try each key up to 3 times
     let keyAttempt = 0;
     let lastError: Error | null = null;
 
@@ -323,13 +358,13 @@ export class GeminiService {
         const waitTime = rateLimiter.getWaitTime();
         
         // If wait time is reasonable, wait and retry
-        if (waitTime < 60000) { // Less than 1 minute
+        if (waitTime < 120000) { // Less than 2 minutes
           console.log(`All keys busy, waiting ${Math.ceil(waitTime / 1000)}s...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         } else {
           // Reset errors and try again if wait time is too long
-          if (keyAttempt === 0) {
+          if (keyAttempt < API_KEYS.length) {
             console.log('Resetting error counts and retrying...');
             rateLimiter.resetErrors();
             keyAttempt++;
@@ -343,6 +378,7 @@ export class GeminiService {
       try {
         rateLimiter.recordRequest(availableKey);
         const result = await this.makeRequestWithKey(prompt, availableKey);
+        console.log('Request completed successfully');
         return result;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
@@ -352,12 +388,13 @@ export class GeminiService {
         
         // If it's a non-recoverable error, don't retry with other keys
         if (lastError.message.includes('INVALID_REQUEST') || 
-            lastError.message.includes('AUTH_FAILED')) {
+            lastError.message.includes('AUTH_ERROR') ||
+            lastError.message.includes('CONTENT_FILTERED')) {
           throw lastError;
         }
         
         // Wait a bit before trying next key
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
@@ -366,9 +403,13 @@ export class GeminiService {
   }
 
   private cleanJsonResponse(response: string): string {
+    console.log('Cleaning JSON response, original length:', response.length);
+    
+    // Remove markdown code blocks
     let cleaned = response.replace(/```json\n?/g, '').replace(/```\n?/g, '');
     cleaned = cleaned.trim();
     
+    // Find the first { and last }
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     
@@ -376,11 +417,14 @@ export class GeminiService {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
     }
     
+    console.log('Cleaned JSON length:', cleaned.length);
+    console.log('Cleaned JSON preview:', cleaned.substring(0, 200) + '...');
+    
     return cleaned.trim();
   }
 
   private validateRoadmapData(data: any): boolean {
-    return (
+    const isValid = (
       data &&
       typeof data === 'object' &&
       data.subject &&
@@ -400,6 +444,21 @@ export class GeminiService {
         Array.isArray(chapter.practicalProjects)
       )
     );
+    
+    if (!isValid) {
+      console.error('Roadmap validation failed:', {
+        hasData: !!data,
+        hasSubject: !!(data && data.subject),
+        hasDifficulty: !!(data && data.difficulty),
+        hasDescription: !!(data && data.description),
+        hasChapters: !!(data && data.chapters),
+        isChaptersArray: !!(data && Array.isArray(data.chapters)),
+        chaptersLength: data && data.chapters ? data.chapters.length : 0,
+        firstChapter: data && data.chapters && data.chapters[0] ? data.chapters[0] : null
+      });
+    }
+    
+    return isValid;
   }
 
   private validateCourseContent(data: any): boolean {
@@ -445,55 +504,200 @@ export class GeminiService {
     
     const preferences = JSON.parse(localStorage.getItem('learningPreferences') || '{}');
     
-    const prompt = `Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level.
+    const prompt = `You are an expert curriculum designer. Create a comprehensive learning roadmap for "${subject}" at "${difficulty}" level.
 
 Learning preferences:
 - Style: ${preferences.learningStyle || 'mixed'}
 - Time: ${preferences.timeCommitment || 'regular'}
 - Goals: ${preferences.goals?.join(', ') || 'general learning'}
 
-Return ONLY valid JSON in this exact format:
+IMPORTANT: Return ONLY a valid JSON object with NO additional text, explanations, or markdown formatting.
 
 {
   "subject": "${subject}",
   "difficulty": "${difficulty}",
-  "description": "Comprehensive ${subject} learning path for ${difficulty} level learners",
+  "description": "Comprehensive ${subject} learning path designed for ${difficulty} level learners with ${preferences.learningStyle || 'mixed'} learning style",
   "totalDuration": "8-12 weeks",
   "estimatedHours": "40-60 hours",
   "prerequisites": ["Basic computer skills", "Internet access", "Text editor"],
   "learningOutcomes": [
-    "Master ${subject} fundamentals",
-    "Build practical projects",
-    "Understand best practices",
-    "Develop problem-solving skills"
+    "Master ${subject} fundamentals and core concepts",
+    "Build practical projects and real-world applications",
+    "Understand industry best practices and standards",
+    "Develop problem-solving and debugging skills",
+    "Gain confidence to work independently"
   ],
   "chapters": [
     {
       "id": "chapter-1",
       "title": "Introduction to ${subject}",
-      "description": "Learn the fundamentals of ${subject}",
+      "description": "Learn the fundamentals and get started with ${subject}",
       "duration": "1 week",
       "estimatedHours": "4-6 hours",
       "difficulty": "beginner",
       "position": "left",
       "completed": false,
-      "keyTopics": ["Basic concepts", "Setup", "First steps"],
-      "skills": ["Understanding fundamentals", "Environment setup"],
-      "practicalProjects": ["Hello World project"],
+      "keyTopics": ["Basic concepts", "Environment setup", "First steps", "Core principles"],
+      "skills": ["Understanding fundamentals", "Environment setup", "Basic navigation"],
+      "practicalProjects": ["Hello World project", "Basic setup exercise"],
       "resources": 5
+    },
+    {
+      "id": "chapter-2",
+      "title": "Core Concepts and Fundamentals",
+      "description": "Deep dive into the essential concepts of ${subject}",
+      "duration": "1-2 weeks",
+      "estimatedHours": "6-8 hours",
+      "difficulty": "beginner",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Data types", "Variables", "Functions", "Control structures"],
+      "skills": ["Basic syntax", "Problem solving", "Code organization"],
+      "practicalProjects": ["Simple calculator", "Basic data manipulation"],
+      "resources": 7
+    },
+    {
+      "id": "chapter-3",
+      "title": "Working with Data and Structures",
+      "description": "Learn how to handle and manipulate data effectively",
+      "duration": "1-2 weeks",
+      "estimatedHours": "6-8 hours",
+      "difficulty": "beginner",
+      "position": "left",
+      "completed": false,
+      "keyTopics": ["Arrays", "Objects", "Data manipulation", "Storage"],
+      "skills": ["Data handling", "Structure design", "Efficient processing"],
+      "practicalProjects": ["Data processor", "Simple database"],
+      "resources": 6
+    },
+    {
+      "id": "chapter-4",
+      "title": "Advanced Techniques and Patterns",
+      "description": "Explore advanced concepts and design patterns",
+      "duration": "1-2 weeks",
+      "estimatedHours": "8-10 hours",
+      "difficulty": "intermediate",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Design patterns", "Advanced algorithms", "Optimization", "Architecture"],
+      "skills": ["Pattern recognition", "Code optimization", "System design"],
+      "practicalProjects": ["Pattern implementation", "Performance optimizer"],
+      "resources": 8
+    },
+    {
+      "id": "chapter-5",
+      "title": "Building Real Applications",
+      "description": "Create complete, functional applications",
+      "duration": "2-3 weeks",
+      "estimatedHours": "10-12 hours",
+      "difficulty": "intermediate",
+      "position": "left",
+      "completed": false,
+      "keyTopics": ["Application architecture", "User interface", "Data flow", "Integration"],
+      "skills": ["Full-stack development", "UI/UX implementation", "System integration"],
+      "practicalProjects": ["Complete web app", "Mobile application"],
+      "resources": 10
+    },
+    {
+      "id": "chapter-6",
+      "title": "Testing and Quality Assurance",
+      "description": "Learn testing methodologies and quality practices",
+      "duration": "1-2 weeks",
+      "estimatedHours": "6-8 hours",
+      "difficulty": "intermediate",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Unit testing", "Integration testing", "Quality metrics", "Debugging"],
+      "skills": ["Test writing", "Quality assurance", "Bug fixing"],
+      "practicalProjects": ["Test suite creation", "Quality dashboard"],
+      "resources": 7
+    },
+    {
+      "id": "chapter-7",
+      "title": "Performance and Optimization",
+      "description": "Optimize applications for speed and efficiency",
+      "duration": "1-2 weeks",
+      "estimatedHours": "8-10 hours",
+      "difficulty": "advanced",
+      "position": "left",
+      "completed": false,
+      "keyTopics": ["Performance analysis", "Optimization techniques", "Caching", "Scaling"],
+      "skills": ["Performance tuning", "Resource optimization", "Scalability planning"],
+      "practicalProjects": ["Performance analyzer", "Optimization toolkit"],
+      "resources": 9
+    },
+    {
+      "id": "chapter-8",
+      "title": "Security and Best Practices",
+      "description": "Implement security measures and industry standards",
+      "duration": "1-2 weeks",
+      "estimatedHours": "6-8 hours",
+      "difficulty": "advanced",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Security principles", "Authentication", "Data protection", "Compliance"],
+      "skills": ["Security implementation", "Risk assessment", "Compliance management"],
+      "practicalProjects": ["Security audit tool", "Authentication system"],
+      "resources": 8
+    },
+    {
+      "id": "chapter-9",
+      "title": "Deployment and DevOps",
+      "description": "Deploy applications and manage development workflows",
+      "duration": "1-2 weeks",
+      "estimatedHours": "8-10 hours",
+      "difficulty": "advanced",
+      "position": "left",
+      "completed": false,
+      "keyTopics": ["Deployment strategies", "CI/CD", "Monitoring", "Infrastructure"],
+      "skills": ["Deployment automation", "System monitoring", "Infrastructure management"],
+      "practicalProjects": ["Deployment pipeline", "Monitoring dashboard"],
+      "resources": 10
+    },
+    {
+      "id": "chapter-10",
+      "title": "Advanced Topics and Specialization",
+      "description": "Explore cutting-edge topics and specialization areas",
+      "duration": "2-3 weeks",
+      "estimatedHours": "10-15 hours",
+      "difficulty": "advanced",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Emerging technologies", "Specialization areas", "Research topics", "Innovation"],
+      "skills": ["Advanced problem solving", "Research abilities", "Innovation thinking"],
+      "practicalProjects": ["Research project", "Innovation prototype"],
+      "resources": 12
+    },
+    {
+      "id": "chapter-11",
+      "title": "Portfolio and Career Development",
+      "description": "Build a professional portfolio and prepare for career advancement",
+      "duration": "1-2 weeks",
+      "estimatedHours": "6-8 hours",
+      "difficulty": "intermediate",
+      "position": "left",
+      "completed": false,
+      "keyTopics": ["Portfolio creation", "Career planning", "Networking", "Interview preparation"],
+      "skills": ["Portfolio development", "Professional presentation", "Career strategy"],
+      "practicalProjects": ["Professional portfolio", "Career roadmap"],
+      "resources": 8
+    },
+    {
+      "id": "chapter-12",
+      "title": "Capstone Project and Mastery",
+      "description": "Complete a comprehensive project demonstrating mastery",
+      "duration": "2-4 weeks",
+      "estimatedHours": "15-20 hours",
+      "difficulty": "advanced",
+      "position": "right",
+      "completed": false,
+      "keyTopics": ["Project planning", "Full implementation", "Documentation", "Presentation"],
+      "skills": ["Project management", "Complete development cycle", "Professional delivery"],
+      "practicalProjects": ["Capstone project", "Professional presentation"],
+      "resources": 15
     }
   ]
-}
-
-Requirements:
-- Create exactly 10-12 chapters
-- Alternate position: "left", "right"
-- Progressive difficulty
-- Realistic time estimates
-- Relevant content for ${subject}
-- All chapters completed: false
-
-Return ONLY the JSON object.`;
+}`;
 
     const response = await this.makeRequest(prompt);
     
@@ -502,13 +706,16 @@ Return ONLY the JSON object.`;
       const parsedData = JSON.parse(cleanedResponse);
       
       if (!this.validateRoadmapData(parsedData)) {
-        throw new Error('Invalid roadmap data structure received.');
+        console.error('Roadmap validation failed, received data:', parsedData);
+        throw new Error('Invalid roadmap data structure received from AI service.');
       }
       
+      console.log('Successfully generated and validated roadmap');
       return parsedData;
     } catch (error) {
       console.error('JSON Parse Error:', error);
-      throw new Error('Failed to parse roadmap response. Please try again.');
+      console.error('Raw response:', response);
+      throw new Error('Failed to parse roadmap response. The AI service returned invalid JSON format.');
     }
   }
 
@@ -542,7 +749,7 @@ Return ONLY the JSON object.`;
     
     const prompt = `Create comprehensive course content for "${chapterTitle}" in ${subject} at ${difficulty} level.
 
-Return ONLY valid JSON:
+IMPORTANT: Return ONLY a valid JSON object with NO additional text, explanations, or markdown formatting.
 
 {
   "title": "${chapterTitle}",
@@ -611,10 +818,7 @@ Return ONLY valid JSON:
     "Explore additional resources",
     "Apply concepts in your own projects"
   ]
-}
-
-Make content specific to ${subject} and appropriate for ${difficulty} level.
-Return ONLY the JSON object.`;
+}`;
 
     const response = await this.makeRequest(prompt);
     
@@ -636,7 +840,7 @@ Return ONLY the JSON object.`;
   async generateQuiz(chapterTitle: string, subject: string, difficulty: string): Promise<any> {
     const prompt = `Create a comprehensive quiz for "${chapterTitle}" in ${subject} at ${difficulty} level.
 
-Return ONLY valid JSON:
+IMPORTANT: Return ONLY a valid JSON object with NO additional text, explanations, or markdown formatting.
 
 {
   "chapterId": "chapter-quiz",
@@ -673,9 +877,7 @@ Requirements:
 - correctAnswer: index (0-3)
 - Detailed explanations
 - Content specific to ${chapterTitle} and ${subject}
-- Appropriate for ${difficulty} level
-
-Return ONLY the JSON object.`;
+- Appropriate for ${difficulty} level`;
 
     const response = await this.makeRequest(prompt);
     

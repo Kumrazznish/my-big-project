@@ -230,6 +230,12 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
         selectedGoals
       });
       
+      // Check rate limit before proceeding
+      if (!rateLimitStatus.canMakeRequest) {
+        console.error('Cannot make request due to rate limits');
+        return;
+      }
+      
       setIsLoading(true);
       onSubjectSelect(selectedSubject, selectedDifficulty, selectedLearningStyle, selectedTimeCommitment, selectedGoals);
     }
@@ -727,26 +733,23 @@ const SubjectSelector: React.FC<SubjectSelectorProps> = ({ onSubjectSelect }) =>
           )}
           
           {/* Rate limit indicator */}
-          <div className={`mt-4 text-center text-sm transition-colors ${
+          {!rateLimitStatus.canMakeRequest && (
+            <div className={`mt-4 p-4 rounded-xl border text-center transition-colors ${
+              theme === 'dark' 
+                ? 'bg-orange-500/10 border-orange-500/20 text-orange-400' 
+                : 'bg-orange-50 border-orange-200 text-orange-600'
+            }`}>
+              <p className="font-medium mb-2">API Rate Limit Reached</p>
+              <p className="text-sm">Please wait {Math.ceil(rateLimitStatus.waitTime / 1000)} seconds before generating a roadmap.</p>
+            </div>
+          )}
+          
+          <div className={`mt-2 text-center text-xs transition-colors ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
           }`}>
-            <div className="flex items-center justify-center space-x-4 flex-wrap gap-2">
+            <div className="flex items-center justify-center space-x-3 flex-wrap gap-1">
               <span>API Keys: {rateLimitStatus.activeKeys}</span>
               <span>Requests Available: {rateLimitStatus.requestsRemaining}</span>
-              {!rateLimitStatus.canMakeRequest && (
-                <span className="text-orange-500">
-                  Wait: {Math.ceil(rateLimitStatus.waitTime / 1000)}s
-                </span>
-              )}
-              {rateLimitStatus.keyStatuses.length > 0 && (
-                <div className="text-xs">
-                  Keys: {rateLimitStatus.keyStatuses.map((status, i) => (
-                    <span key={i} className={status.available ? 'text-green-500' : 'text-red-500'}>
-                      {status.key}({status.requests}/{status.errors})
-                    </span>
-                  )).reduce((prev, curr, i) => [prev, i > 0 ? ', ' : '', curr])}
-                </div>
-              )}
             </div>
           </div>
         </div>
