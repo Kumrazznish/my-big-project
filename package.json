@@ -15,7 +15,7 @@
   "dependencies": {
     "@clerk/clerk-react": "^5.32.4",
     "axios": "^1.10.0",
-    "firebase": "^10.7.1",
+    "firebase": "^11.10.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
