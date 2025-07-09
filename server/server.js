@@ -8,6 +8,10 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Firebase initialization flag
+let firebaseInitialized = false;
+let db = null;
+
 // Initialize Firebase Admin SDK
 const serviceAccount = {
   type: "service_account",
@@ -27,13 +31,13 @@ try {
     credential: admin.credential.cert(serviceAccount),
     projectId: process.env.FIREBASE_PROJECT_ID
   });
+  db = admin.firestore();
+  firebaseInitialized = true;
   console.log('Firebase Admin SDK initialized successfully');
 } catch (error) {
   console.error('Firebase Admin SDK initialization error:', error);
-  // Continue without Firebase Admin for development
+  console.log('Server will continue without Firebase functionality');
 }
-
-const db = admin.firestore();
 
 // Middleware
 app.use(helmet());
@@ -52,6 +56,17 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware to check Firebase availability
+const requireFirebase = (req, res, next) => {
+  if (!firebaseInitialized) {
+    return res.status(503).json({ 
+      error: 'Firebase service unavailable',
+      message: 'Database connection is not available. Please check server configuration.'
+    });
+  }
+  next();
+};
+
 // Helper function to convert Firestore timestamp to ISO string
 const timestampToString = (timestamp) => {
   if (!timestamp) return new Date().toISOString();
@@ -67,7 +82,7 @@ const timestampToString = (timestamp) => {
 // Routes
 
 // Get or create user
-app.post('/api/users/get-or-create', async (req, res) => {
+app.post('/api/users/get-or-create', requireFirebase, async (req, res) => {
   try {
     const { clerkId, email, firstName, lastName, imageUrl } = req.body;
 
@@ -128,7 +143,7 @@ app.post('/api/users/get-or-create', async (req, res) => {
 });
 
 // Update user
-app.put('/api/users/:userId', async (req, res) => {
+app.put('/api/users/:userId', requireFirebase, async (req, res) => {
   try {
     const { userId } = req.params;
     const updateData = {
@@ -158,7 +173,7 @@ app.put('/api/users/:userId', async (req, res) => {
 });
 
 // Get user learning history
-app.get('/api/users/:userId/history', async (req, res) => {
+app.get('/api/users/:userId/history', requireFirebase, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -193,7 +208,7 @@ app.get('/api/users/:userId/history', async (req, res) => {
 });
 
 // Add to learning history
-app.post('/api/users/:userId/history', async (req, res) => {
+app.post('/api/users/:userId/history', requireFirebase, async (req, res) => {
   try {
     const { userId } = req.params;
     const historyData = req.body;
@@ -231,7 +246,7 @@ app.post('/api/users/:userId/history', async (req, res) => {
 });
 
 // Update chapter progress
-app.put('/api/users/:userId/history/:historyId/chapter/:chapterId', async (req, res) => {
+app.put('/api/users/:userId/history/:historyId/chapter/:chapterId', requireFirebase, async (req, res) => {
   try {
     const { userId, historyId, chapterId } = req.params;
     const { completed, completedAt } = req.body;
@@ -293,7 +308,8 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    database: 'Firebase Firestore'
+    database: firebaseInitialized ? 'Firebase Firestore' : 'Unavailable',
+    firebaseInitialized
   });
 });
 
@@ -310,5 +326,5 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log('Using Firebase Firestore as database');
+  console.log(`Database status: ${firebaseInitialized ? 'Firebase Firestore connected' : 'Firebase unavailable'}`);
 });
