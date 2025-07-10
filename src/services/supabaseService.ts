@@ -248,6 +248,9 @@ class SupabaseService {
     } catch (error) {
       console.error('Error updating chapter progress:', error);
       throw error;
+    }
+  }
+
   async saveRoadmap(userId: string, roadmapData: {
     roadmapId: string;
     subject: string;
