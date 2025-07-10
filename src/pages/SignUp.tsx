@@ -97,8 +97,11 @@ const SignUpPage: React.FC = () => {
                   footerActionLink: "text-cyan-500 hover:text-cyan-400"
                 }
               }}
-              redirectUrl="/dashboard"
+              afterSignInUrl="/dashboard"
+              afterSignUpUrl="/dashboard"
               signInUrl="/login"
+              routing="path"
+              path="/signup"
             />
           </div>
           

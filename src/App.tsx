@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ClerkProvider, useUser } from '@clerk/clerk-react';
+import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import LandingPage from './components/LandingPage';
@@ -15,9 +15,6 @@ import ChapterDetails from './pages/ChapterDetails';
 import QuizView from './pages/Quiz';
 import LoginPage from './pages/Login';
 import SignUpPage from './pages/SignUp';
-import { Chapter, QuizResult } from './types';
-import { userService } from './services/userService';
-import { useAuth } from './contexts/AuthContext';
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -27,75 +24,104 @@ if (!CLERK_PUBLISHABLE_KEY) {
 
 function App() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider 
+      publishableKey={CLERK_PUBLISHABLE_KEY}
+      navigate={(to) => window.location.href = to}
+    >
       <ThemeProvider>
         <Router>
           <AuthProvider>
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignUpPage />} />
+              <Route path="/login" element={
+                <SignedOut>
+                  <LoginPage />
+                </SignedOut>
+              } />
+              <Route path="/signup" element={
+                <SignedOut>
+                  <SignUpPage />
+                </SignedOut>
+              } />
               
               {/* Protected Routes */}
               <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Dashboard />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               <Route path="/history" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <HistoryPage />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <HistoryPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               <Route path="/subject-selection" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <SubjectSelector />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <SubjectSelector />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               <Route path="/roadmap/:roadmapId?" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <RoadmapView />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <RoadmapView />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               <Route path="/course/:roadmapId" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <DetailedCoursePage />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <DetailedCoursePage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               <Route path="/chapter/:roadmapId/:chapterId" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <ChapterDetails />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <ChapterDetails />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               <Route path="/quiz/:roadmapId/:chapterId" element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <QuizView />
-                  </AppLayout>
-                </ProtectedRoute>
+                <SignedIn>
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <QuizView />
+                    </AppLayout>
+                  </ProtectedRoute>
+                </SignedIn>
               } />
               
               {/* Redirect unknown routes */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={
+                <SignedIn>
+                  <Navigate to="/dashboard" replace />
+                </SignedIn>
+              } />
             </Routes>
           </AuthProvider>
         </Router>

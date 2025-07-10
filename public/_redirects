@@ -1,8 +1,9 @@
 # Netlify redirects file for SPA routing
 # This ensures all routes are handled by the React app
 
+# Handle Clerk auth routes
+/login    /login    200
+/signup   /signup   200
+
 # Handle all routes by serving index.html
 /*    /index.html   200
-
-# Optional: Handle specific API routes if needed
-/api/*  /api/:splat  200
