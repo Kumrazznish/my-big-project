@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SignInButton, SignUpButton } from '@clerk/clerk-react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { 
   Brain, 
@@ -35,6 +35,7 @@ import {
 
 const LandingPage: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [activeFeature, setActiveFeature] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -188,19 +189,21 @@ const LandingPage: React.FC = () => {
                 {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </button>
               
-              <SignInButton mode="modal">
-                <button className={`font-medium transition-colors ${
+              <button 
+                onClick={() => navigate('/login')}
+                className={`font-medium transition-colors ${
                   theme === 'dark' ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
-                }`}>
-                  Sign In
-                </button>
-              </SignInButton>
+                }`}
+              >
+                Sign In
+              </button>
               
-              <SignUpButton mode="modal">
-                <button className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105">
-                  Start Free Trial
-                </button>
-              </SignUpButton>
+              <button 
+                onClick={() => navigate('/signup')}
+                className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg hover:shadow-xl hover:scale-105"
+              >
+                Start Free Trial
+              </button>
 
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -284,12 +287,13 @@ const LandingPage: React.FC = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <SignUpButton mode="modal">
-                  <button className="group bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-cyan-500/25 hover:scale-105 flex items-center justify-center">
-                    Start Learning Free
-                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </SignUpButton>
+                <button 
+                  onClick={() => navigate('/signup')}
+                  className="group bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-cyan-500/25 hover:scale-105 flex items-center justify-center"
+                >
+                  Start Learning Free
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
                 <button className={`group border-2 px-8 py-4 rounded-xl transition-all duration-300 font-semibold text-lg flex items-center justify-center ${
                   theme === 'dark' 
                     ? 'border-gray-600 text-gray-300 hover:border-gray-400 hover:bg-white/5' 
@@ -693,11 +697,12 @@ const LandingPage: React.FC = () => {
                 Join the learning revolution. Start your personalized AI-powered journey today and unlock your potential.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <SignUpButton mode="modal">
-                  <button className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-10 py-4 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-cyan-500/25 hover:scale-105">
-                    Start Free Trial
-                  </button>
-                </SignUpButton>
+                <button 
+                  onClick={() => navigate('/signup')}
+                  className="bg-gradient-to-r from-cyan-500 to-purple-600 text-white px-10 py-4 rounded-xl hover:from-cyan-600 hover:to-purple-700 transition-all duration-300 font-semibold text-lg shadow-2xl hover:shadow-cyan-500/25 hover:scale-105"
+                >
+                  Start Free Trial
+                </button>
                 <button className={`border-2 px-10 py-4 rounded-xl transition-all duration-300 font-semibold text-lg ${
                   theme === 'dark' 
                     ? 'border-gray-600 text-gray-300 hover:border-gray-400 hover:bg-white/5' 
