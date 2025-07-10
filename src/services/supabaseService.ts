@@ -300,9 +300,9 @@ class SupabaseService {
         .eq('user_id', userId)
         .eq('roadmap_id', roadmapId)
         .single();
-    }
+
       if (error && error.code !== 'PGRST116') throw error;
-  }
+
       if (!history || !history.learning_preferences?.roadmapContent) {
         console.log('No roadmap found in database');
         return null;
