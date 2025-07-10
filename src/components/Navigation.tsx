@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserButton, useUser } from '@clerk/clerk-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { Brain, History, BookOpen, User, Menu, X, Sparkles, BarChart3, Settings, Bell, Sun, Moon } from 'lucide-react';
 
@@ -11,11 +12,13 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
   const { user } = useUser();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { id: 'dashboard', name: 'Dashboard', icon: BookOpen, description: 'Your learning hub' },
-    { id: 'history', name: 'Progress', icon: History, description: 'Track your journey' },
+    { id: 'dashboard', name: 'Dashboard', icon: BookOpen, description: 'Your learning hub', path: '/dashboard' },
+    { id: 'history', name: 'Progress', icon: History, description: 'Track your journey', path: '/history' },
     { id: 'analytics', name: 'Analytics', icon: BarChart3, description: 'Performance insights' },
   ];
 
@@ -28,7 +31,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
             <div className="relative">
               <div className="w-12 h-12 bg-gradient-to-r from-cyan-400 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
                 <Brain className="w-7 h-7 text-white" />
@@ -53,12 +56,16 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
           <div className="hidden lg:flex items-center space-x-2">
             {navItems.map((item) => {
               const Icon = item.icon;
+              const isActive = item.path ? location.pathname === item.path : currentView === item.id;
+              
               return (
                 <button
                   key={item.id}
-                  onClick={() => onNavigate(item.id)}
+                  onClick={() => {
+                    item.path ? navigate(item.path) : onNavigate(item.id);
+                  }}
                   className={`group relative flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 ${
-                    currentView === item.id
+                    isActive
                       ? theme === 'dark'
                         ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400'
                         : 'bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-200 text-cyan-600'
@@ -73,7 +80,7 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
                     <div className="text-xs opacity-75">{item.description}</div>
                   </div>
                   
-                  {currentView === item.id && (
+                  {isActive && (
                     <div className={`absolute inset-0 rounded-xl ${
                       theme === 'dark' 
                         ? 'bg-gradient-to-r from-cyan-500/10 to-purple-500/10' 
@@ -161,15 +168,17 @@ const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate }) => {
             <div className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
+                const isActive = item.path ? location.pathname === item.path : currentView === item.id;
+                
                 return (
                   <button
                     key={item.id}
                     onClick={() => {
-                      onNavigate(item.id);
+                      item.path ? navigate(item.path) : onNavigate(item.id);
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
-                      currentView === item.id
+                      isActive
                         ? theme === 'dark'
                           ? 'bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 text-cyan-400'
                           : 'bg-gradient-to-r from-cyan-50 to-purple-50 border border-cyan-200 text-cyan-600'
