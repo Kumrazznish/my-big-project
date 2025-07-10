@@ -2,13 +2,14 @@
   publish = "dist"
   command = "npm run build"
 
+[build.environment]
+  NODE_VERSION = "18"
+  # Environment variables will be set in Netlify dashboard
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[build.environment]
-  NODE_VERSION = "18"
 
 # Security headers
 [[headers]]
