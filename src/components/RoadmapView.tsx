@@ -54,34 +54,137 @@ interface RoadmapViewProps {
   onBack: () => void;
   onChapterSelect: (chapter: Chapter) => void;
   onDetailedCourseGenerated: (courseData: any) => void;
-}
-
-const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, onChapterSelect, onDetailedCourseGenerated }) => {
-  const { theme } = useTheme();
-  const { user } = useAuth();
-  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
-  const [detailedCourse, setDetailedCourse] = useState<DetailedCourse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [generatingCourse, setGeneratingCourse] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [currentRoadmapId, setCurrentRoadmapId] = useState<string>('');
-  const [courseProgress, setCourseProgress] = useState<{ [key: string]: boolean }>({});
-  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0, currentChapter: '' });
-  const [hasCheckedExistingCourse, setHasCheckedExistingCourse] = useState(false);
-
-  const maxRetries = 3;
-
-  useEffect(() => {
-    console.log('RoadmapView mounted with:', { subject, difficulty });
-    
-    // Generate unique roadmap ID
-    const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setCurrentRoadmapId(roadmapId);
-    
-    generateRoadmap();
+    // Load existing data or generate new roadmap
+    loadExistingDataOrGenerate(roadmapId);
   }, [subject, difficulty]);
+
+  const loadExistingDataOrGenerate = async (roadmapId: string) => {
+    console.log('Loading existing data or generating new roadmap for:', roadmapId);
+    
+    // First, try to load existing roadmap from history
+    if (user) {
+      try {
+        const history = await userService.getUserHistory(user._id);
+        const existingHistory = history.find(h => h.roadmapId === roadmapId);
+        
+        if (existingHistory) {
+          console.log('Found existing roadmap in history, loading saved data...');
+          
+          // Try to load saved roadmap data
+          const savedRoadmapData = localStorage.getItem(`roadmap_${roadmapId}`);
+          if (savedRoadmapData) {
+            try {
+              const parsedRoadmap = JSON.parse(savedRoadmapData);
+              console.log('Loaded roadmap from localStorage');
+              setRoadmap(parsedRoadmap);
+              setSavedRoadmap(parsedRoadmap);
+              
+              // Update chapter progress from history
+              const progressMap: { [key: string]: boolean } = {};
+              existingHistory.chapterProgress.forEach(cp => {
+                progressMap[cp.chapterId] = cp.completed;
+              });
+              setCourseProgress(progressMap);
+              
+              // Try to load detailed course
+              await loadDetailedCourse(roadmapId);
+              setLoading(false);
+              return;
+            } catch (error) {
+              console.error('Failed to parse saved roadmap:', error);
+            }
+          }
+          
+          // If no saved roadmap data, try to load detailed course and reconstruct
+          const detailedCourse = await userService.getDetailedCourse(user._id, roadmapId);
+          if (detailedCourse) {
+            console.log('Found detailed course, reconstructing roadmap...');
+            // Reconstruct roadmap from detailed course
+            const reconstructedRoadmap = reconstructRoadmapFromCourse(detailedCourse, existingHistory);
+            setRoadmap(reconstructedRoadmap);
+            setDetailedCourse(detailedCourse);
+            
+            // Update chapter progress
+            const progressMap: { [key: string]: boolean } = {};
+            existingHistory.chapterProgress.forEach(cp => {
+              progressMap[cp.chapterId] = cp.completed;
+            });
+            setCourseProgress(progressMap);
+            
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load existing data:', error);
+      }
+    }
+    
+    // If no existing data found, generate new roadmap
+    console.log('No existing data found, generating new roadmap...');
+    await generateRoadmap();
+  };
+
+  const loadDetailedCourse = async (roadmapId: string) => {
+    // First try localStorage
+    const savedCourse = localStorage.getItem(`detailed_course_${roadmapId}`);
+    if (savedCourse) {
+      try {
+        const parsedCourse = JSON.parse(savedCourse);
+        setDetailedCourse(parsedCourse);
+        console.log('Loaded detailed course from localStorage');
+        return;
+      } catch (error) {
+        console.error('Failed to parse saved course:', error);
+      }
+    }
+    
+    // If not in localStorage and user is logged in, try database
+    if (user) {
+      try {
+        const course = await userService.getDetailedCourse(user._id, roadmapId);
+        if (course) {
+          setDetailedCourse(course);
+          // Also save to localStorage for offline access
+          localStorage.setItem(`detailed_course_${roadmapId}`, JSON.stringify(course));
+          console.log('Loaded detailed course from database');
+        }
+      } catch (error) {
+        console.error('Failed to load detailed course from database:', error);
+      }
+    }
+  };
+
+  const reconstructRoadmapFromCourse = (detailedCourse: any, historyItem: any): Roadmap => {
+    return {
+      subject: historyItem.subject,
+      difficulty: historyItem.difficulty,
+      description: detailedCourse.description || `Comprehensive ${historyItem.subject} learning path`,
+      totalDuration: "8-12 weeks",
+      estimatedHours: "40-60 hours",
+      prerequisites: ["Basic computer skills", "Internet access"],
+      learningOutcomes: [
+        `Master ${historyItem.subject} fundamentals`,
+        "Build practical projects",
+        "Understand best practices",
+        "Develop problem-solving skills"
+      ],
+      chapters: detailedCourse.chapters.map((chapter: any, index: number) => ({
+        id: chapter.id,
+        title: chapter.title,
+        description: chapter.content?.description || `Learn ${chapter.title}`,
+        duration: "1-2 weeks",
+        estimatedHours: "4-6 hours",
+        difficulty: index < 3 ? "beginner" : index < 7 ? "intermediate" : "advanced",
+        position: index % 2 === 0 ? "left" : "right",
+        completed: historyItem.chapterProgress.find((cp: any) => cp.chapterId === chapter.id)?.completed || false,
+        keyTopics: ["Core concepts", "Practical applications", "Best practices"],
+        skills: ["Understanding fundamentals", "Practical implementation"],
+        practicalProjects: ["Hands-on exercises", "Real-world projects"],
+        resources: 5
+      }))
+    };
+  };
 
   // Load existing detailed course after roadmap is generated
   useEffect(() => {
@@ -140,6 +243,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       const roadmapData = await geminiService.generateRoadmap(subject, difficulty);
       console.log('Roadmap generated successfully:', roadmapData);
       setRoadmap(roadmapData);
+      
+      // Save roadmap data to localStorage for future use
+      localStorage.setItem(`roadmap_${currentRoadmapId}`, JSON.stringify(roadmapData));
       
       // Save roadmap to user's history if logged in
       if (user) {
@@ -350,10 +456,10 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       
       setDetailedCourse(detailedCourseData);
       
-      // Save detailed course to localStorage for persistence
+      // Save detailed course to localStorage immediately
       localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(detailedCourseData));
-      console.log('Saved detailed course to localStorage');
       
+      // Save detailed course to localStorage for persistence
       // Save to Supabase if user is logged in (async operation)
       const saveToSupabase = async () => {
         if (user) {
@@ -394,7 +500,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   };
 
   const handleChapterClick = (chapter: Chapter) => {
-    // Allow chapter selection even without detailed course for basic roadmap view
+    console.log('Chapter clicked:', chapter.title);
     const courseChapter = detailedCourse?.chapters.find(c => c.id === chapter.id);
     
     // Create enhanced chapter object with course content if available
@@ -407,6 +513,13 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     setSelectedChapter(chapter.id);
     onChapterSelect(enhancedChapter);
   };
+
+  // Clear the current roadmap ID when component unmounts or when going back
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('currentRoadmapId');
+    };
+  }, []);
 
   const updateChapterProgress = async (chapterId: string, completed: boolean) => {
     if (!user || !currentRoadmapId) return;

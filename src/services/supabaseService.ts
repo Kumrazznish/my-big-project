@@ -248,6 +248,68 @@ class SupabaseService {
     } catch (error) {
       console.error('Error updating chapter progress:', error);
       throw error;
+  async saveRoadmap(userId: string, roadmapData: {
+    roadmapId: string;
+    subject: string;
+    difficulty: string;
+    roadmapContent: any;
+  }): Promise<void> {
+    try {
+      console.log('Saving roadmap to database for:', { userId, roadmapId: roadmapData.roadmapId });
+      
+      // For now, we'll store roadmap data in the learning_history table's metadata
+      // In a production app, you might want a separate roadmaps table
+      const { data: existingHistory, error: fetchError } = await supabase
+        .from('learning_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('roadmap_id', roadmapData.roadmapId)
+        .single();
+
+      if (existingHistory) {
+        // Update existing history with roadmap data
+        const { error: updateError } = await supabase
+          .from('learning_history')
+          .update({
+            learning_preferences: {
+              ...roadmapData,
+              roadmapContent: roadmapData.roadmapContent
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingHistory.id);
+
+        if (updateError) throw updateError;
+        console.log('Successfully updated roadmap in learning history');
+      }
+    } catch (error) {
+      console.error('Error saving roadmap:', error);
+      throw error;
+    }
+  }
+
+  async getRoadmap(userId: string, roadmapId: string): Promise<any | null> {
+    try {
+      console.log('Fetching roadmap from database:', { userId, roadmapId });
+      const { data: history, error } = await supabase
+        .from('learning_history')
+        .select('learning_preferences')
+        .eq('user_id', userId)
+        .eq('roadmap_id', roadmapId)
+        .single();
+    }
+      if (error && error.code !== 'PGRST116') throw error;
+  }
+      if (!history || !history.learning_preferences?.roadmapContent) {
+        console.log('No roadmap found in database');
+        return null;
+      }
+
+      console.log('Found roadmap in database');
+      return history.learning_preferences.roadmapContent;
+    } catch (error) {
+      console.error('Error getting roadmap:', error);
+      return null;
     }
   }
 

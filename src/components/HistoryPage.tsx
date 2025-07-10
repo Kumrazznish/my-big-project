@@ -58,23 +58,13 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
   const handleContinueLearning = async (subject: string, difficulty: string, roadmapId: string) => {
     console.log('Continuing learning with:', { subject, difficulty, roadmapId });
     
-    // Check if detailed course exists for this roadmap
-    if (user) {
-      try {
-        const existingCourse = await userService.getDetailedCourse(user._id, roadmapId);
-        if (existingCourse) {
-          console.log('Found existing detailed course, will load it directly');
-          // Store the existing course data for the roadmap view to use
-          localStorage.setItem(`detailed_course_${roadmapId}`, JSON.stringify(existingCourse));
-        }
-      } catch (error) {
-        console.error('Failed to check for existing detailed course:', error);
-      }
-    }
+    // Store the roadmap ID so RoadmapView knows to load existing data
+    localStorage.setItem('currentRoadmapId', roadmapId);
     
-    // Continue with the original flow
+    // Continue with the original flow - RoadmapView will handle loading existing data
     onContinueLearning(subject, difficulty, roadmapId);
   };
+
   const getSubjectIcon = (subject: string) => {
     const subjectLower = subject.toLowerCase();
     if (subjectLower.includes('programming') || subjectLower.includes('code')) return Code;

@@ -141,6 +141,37 @@ class UserService {
     }
   }
 
+  async saveRoadmap(userId: string, roadmapData: {
+    roadmapId: string;
+    subject: string;
+    difficulty: string;
+    roadmapContent: any;
+  }): Promise<void> {
+    try {
+      console.log('Saving roadmap to database for:', { userId, roadmapId: roadmapData.roadmapId });
+      await supabaseService.saveRoadmap(userId, roadmapData);
+      console.log('Successfully saved roadmap to database');
+    } catch (error) {
+      console.error('Error in userService.saveRoadmap:', error);
+      // Fallback to localStorage
+      console.log('Falling back to localStorage for saving roadmap');
+      localStorage.setItem(`roadmap_${roadmapData.roadmapId}`, JSON.stringify(roadmapData.roadmapContent));
+    }
+  }
+
+  async getRoadmap(userId: string, roadmapId: string): Promise<any | null> {
+    try {
+      console.log('Getting roadmap from database for:', { userId, roadmapId });
+      return await supabaseService.getRoadmap(userId, roadmapId);
+    } catch (error) {
+      console.error('Error in userService.getRoadmap:', error);
+      // Fallback to localStorage
+      console.log('Falling back to localStorage for roadmap');
+      const roadmap = localStorage.getItem(`roadmap_${roadmapId}`);
+      return roadmap ? JSON.parse(roadmap) : null;
+    }
+  }
+
   async getDetailedCourse(userId: string, roadmapId: string): Promise<any | null> {
     try {
       console.log('Getting detailed course from database for:', { userId, roadmapId });
