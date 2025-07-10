@@ -448,8 +448,10 @@ const DetailedCoursePage: React.FC<DetailedCoursePageProps> = ({
         }
       } catch (error) {
         console.error('Failed to update chapter progress:', error);
-        
-        // Update in Supabase if user is logged in
+      }
+      
+      // Update in Supabase if user is logged in (async operation)
+      const updateInSupabase = async () => {
         if (user) {
           try {
             await userService.saveDetailedCourse(user._id, {
@@ -462,7 +464,9 @@ const DetailedCoursePage: React.FC<DetailedCoursePageProps> = ({
             console.error('Failed to update detailed course in database:', error);
           }
         }
-      }
+      };
+      
+      updateInSupabase();
     }
   };
 
