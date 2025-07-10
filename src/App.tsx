@@ -148,6 +148,10 @@ const AppContent: React.FC = () => {
     setSelectedSubject(subject);
     setSelectedDifficulty(difficulty);
     setCurrentRoadmapId(roadmapId);
+    
+    // Store the roadmap ID for the RoadmapView to use
+    localStorage.setItem('currentRoadmapId', roadmapId);
+    
     setCurrentState('roadmap');
   };
 

@@ -143,12 +143,32 @@ class UserService {
 
   async getDetailedCourse(userId: string, roadmapId: string): Promise<any | null> {
     try {
+      console.log('Getting detailed course from database for:', { userId, roadmapId });
       return await supabaseService.getDetailedCourse(userId, roadmapId);
     } catch (error) {
       console.error('Error in userService.getDetailedCourse:', error);
       // Fallback to localStorage
+      console.log('Falling back to localStorage for detailed course');
       const course = localStorage.getItem(`detailed_course_${roadmapId}`);
       return course ? JSON.parse(course) : null;
+    }
+  }
+
+  async saveDetailedCourse(userId: string, courseData: {
+    roadmapId: string;
+    title: string;
+    description: string;
+    chapters: any[];
+  }): Promise<void> {
+    try {
+      console.log('Saving detailed course to database for:', { userId, roadmapId: courseData.roadmapId });
+      await supabaseService.saveDetailedCourse(userId, courseData);
+      console.log('Successfully saved detailed course to database');
+    } catch (error) {
+      console.error('Error in userService.saveDetailedCourse:', error);
+      // Fallback to localStorage
+      console.log('Falling back to localStorage for saving detailed course');
+      localStorage.setItem(`detailed_course_${courseData.roadmapId}`, JSON.stringify(courseData));
     }
   }
 }

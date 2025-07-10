@@ -55,6 +55,26 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
     }
   };
 
+  const handleContinueLearning = async (subject: string, difficulty: string, roadmapId: string) => {
+    console.log('Continuing learning with:', { subject, difficulty, roadmapId });
+    
+    // Check if detailed course exists for this roadmap
+    if (user) {
+      try {
+        const existingCourse = await userService.getDetailedCourse(user._id, roadmapId);
+        if (existingCourse) {
+          console.log('Found existing detailed course, will load it directly');
+          // Store the existing course data for the roadmap view to use
+          localStorage.setItem(`detailed_course_${roadmapId}`, JSON.stringify(existingCourse));
+        }
+      } catch (error) {
+        console.error('Failed to check for existing detailed course:', error);
+      }
+    }
+    
+    // Continue with the original flow
+    onContinueLearning(subject, difficulty, roadmapId);
+  };
   const getSubjectIcon = (subject: string) => {
     const subjectLower = subject.toLowerCase();
     if (subjectLower.includes('programming') || subjectLower.includes('code')) return Code;
@@ -404,7 +424,7 @@ const HistoryPage: React.FC<HistoryPageProps> = ({ onContinueLearning }) => {
                       ? 'bg-slate-800/50 border-white/10 hover:border-cyan-500/30 hover:shadow-2xl hover:shadow-cyan-500/10' 
                       : 'bg-white/80 border-gray-200 hover:border-cyan-300 hover:shadow-2xl hover:shadow-cyan-500/10'
                   }`}
-                  onClick={() => onContinueLearning(item.subject, item.difficulty, item.roadmapId)}
+                  onClick={() => handleContinueLearning(item.subject, item.difficulty, item.roadmapId)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-8">

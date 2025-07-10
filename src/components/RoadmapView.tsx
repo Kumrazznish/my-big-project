@@ -69,6 +69,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   const [currentRoadmapId, setCurrentRoadmapId] = useState<string>('');
   const [courseProgress, setCourseProgress] = useState<{ [key: string]: boolean }>({});
   const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0, currentChapter: '' });
+  const [hasCheckedExistingCourse, setHasCheckedExistingCourse] = useState(false);
 
   const maxRetries = 3;
 
@@ -79,13 +80,40 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     const roadmapId = `roadmap_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setCurrentRoadmapId(roadmapId);
     
-    // Load existing detailed course
-    const loadDetailedCourse = async () => {
-      // First try localStorage
-      const savedCourse = localStorage.getItem(`detailed_course_${roadmapId}`);
+    generateRoadmap();
+  }, [subject, difficulty]);
+
+  // Load existing detailed course after roadmap is generated
+  useEffect(() => {
+    if (roadmap && currentRoadmapId && user && !hasCheckedExistingCourse) {
+      loadExistingDetailedCourse();
+    }
+  }, [roadmap, currentRoadmapId, user, hasCheckedExistingCourse]);
+
+  const loadExistingDetailedCourse = async () => {
+    if (!user || !currentRoadmapId) return;
+    
+    setHasCheckedExistingCourse(true);
+    
+    try {
+      console.log('Checking for existing detailed course...');
+      
+      // First try to get from database
+      const existingCourse = await userService.getDetailedCourse(user._id, currentRoadmapId);
+      if (existingCourse) {
+        console.log('Found existing detailed course in database');
+        setDetailedCourse(existingCourse);
+        // Also save to localStorage for offline access
+        localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(existingCourse));
+        return;
+      }
+      
+      // If not in database, try localStorage
+      const savedCourse = localStorage.getItem(`detailed_course_${currentRoadmapId}`);
       if (savedCourse) {
         try {
           const parsedCourse = JSON.parse(savedCourse);
+          console.log('Found existing detailed course in localStorage');
           setDetailedCourse(parsedCourse);
           return;
         } catch (error) {
@@ -93,26 +121,11 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         }
       }
       
-      // If not in localStorage and user is logged in, try Supabase
-      if (user) {
-        try {
-          const course = await userService.getDetailedCourse(user._id, roadmapId);
-          if (course) {
-            setDetailedCourse(course);
-            // Also save to localStorage for offline access
-            localStorage.setItem(`detailed_course_${roadmapId}`, JSON.stringify(course));
-          }
-        } catch (error) {
-          console.error('Failed to load detailed course from database:', error);
-        }
-      }
-    };
-    
-    loadDetailedCourse();
-    
-    generateRoadmap();
-  }, [subject, difficulty]);
-
+      console.log('No existing detailed course found');
+    } catch (error) {
+      console.error('Failed to load existing detailed course:', error);
+    }
+  };
   const generateRoadmap = async () => {
     console.log('Generating roadmap for:', { subject, difficulty });
     setLoading(true);
@@ -146,6 +159,7 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
               goals: preferences.goals || []
             }
           });
+          console.log('Successfully saved roadmap to history');
         } catch (historyError) {
           console.error('Failed to save to history:', historyError);
         }
@@ -163,6 +177,13 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
   const generateDetailedCourse = async () => {
     if (!roadmap || !user) {
       console.error('Cannot generate detailed course: missing roadmap or user');
+      alert('Please make sure you are logged in and have a roadmap generated first.');
+      return;
+    }
+    
+    // Check if detailed course already exists
+    if (detailedCourse) {
+      console.log('Detailed course already exists, skipping generation');
       return;
     }
     
@@ -171,11 +192,13 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
     setGenerationProgress({ current: 0, total: roadmap.chapters.length * 2, currentChapter: '' });
     
     try {
+      console.log('Starting detailed course generation...');
       const courseChapters = [];
       
       // Generate detailed content and quiz for each chapter
       for (let i = 0; i < roadmap.chapters.length; i++) {
         const chapter = roadmap.chapters[i];
+        console.log(`Processing chapter ${i + 1}/${roadmap.chapters.length}: ${chapter.title}`);
         
         // Update progress for course content generation
         setGenerationProgress({ 
@@ -187,11 +210,13 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         // Generate course content with enhanced error handling
         let courseContent;
         try {
+          console.log(`Generating content for: ${chapter.title}`);
           courseContent = await geminiService.generateCourseContent(
             chapter.title, 
             subject, 
             difficulty
           );
+          console.log(`Successfully generated content for: ${chapter.title}`);
         } catch (contentError) {
           console.error(`Failed to generate content for ${chapter.title}:`, contentError);
           // Create comprehensive fallback content
@@ -262,11 +287,13 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
         // Generate quiz with enhanced error handling
         let quiz;
         try {
+          console.log(`Generating quiz for: ${chapter.title}`);
           quiz = await geminiService.generateQuiz(
             chapter.title, 
             subject, 
             difficulty
           );
+          console.log(`Successfully generated quiz for: ${chapter.title}`);
         } catch (quizError) {
           console.error(`Failed to generate quiz for ${chapter.title}:`, quizError);
           // Create comprehensive fallback quiz
@@ -323,22 +350,22 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       
       setDetailedCourse(detailedCourseData);
       
-      // Notify parent component
-      onDetailedCourseGenerated(detailedCourseData);
-      
       // Save detailed course to localStorage for persistence
       localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(detailedCourseData));
+      console.log('Saved detailed course to localStorage');
       
       // Save to Supabase if user is logged in (async operation)
       const saveToSupabase = async () => {
         if (user) {
           try {
+            console.log('Saving detailed course to database...');
             await userService.saveDetailedCourse(user._id, {
               roadmapId: currentRoadmapId,
               title: detailedCourseData.title,
               description: detailedCourseData.description,
               chapters: detailedCourseData.chapters
             });
+            console.log('Successfully saved detailed course to database');
           } catch (error) {
             console.error('Failed to save detailed course to database:', error);
           }
@@ -346,6 +373,9 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       };
       
       saveToSupabase();
+      
+      // Notify parent component
+      onDetailedCourseGenerated(detailedCourseData);
       
     } catch (error) {
       console.error('Failed to generate detailed course:', error);
@@ -1045,6 +1075,35 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
             }`}>
               Create comprehensive lessons with videos, code examples, and interactive quizzes
             </p>
+          </div>
+        )}
+        
+        {/* Show message if detailed course exists */}
+        {detailedCourse && !generatingCourse && (
+          <div className="text-center">
+            <div className={`backdrop-blur-xl border rounded-3xl p-10 mb-8 transition-colors ${
+              theme === 'dark' 
+                ? 'bg-green-500/10 border-green-500/30' 
+                : 'bg-green-50 border-green-200'
+            }`}>
+              <div className="w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8">
+                <CheckCircle className="w-12 h-12 text-white" />
+              </div>
+              <h3 className={`text-3xl font-bold mb-6 transition-colors ${
+                theme === 'dark' ? 'text-white' : 'text-gray-900'
+              }`}>
+                Enhanced Course Ready!
+              </h3>
+              <p className={`text-xl mb-6 max-w-3xl mx-auto transition-colors ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                Your comprehensive course with detailed content, videos, code examples, and quizzes is ready. 
+                Click on any chapter above to start learning with enhanced content.
+              </p>
+              <div className="text-green-500 font-bold text-lg">
+                ✨ {detailedCourse.chapters.length} Enhanced Chapters Available
+              </div>
+            </div>
           </div>
         )}
       </div>

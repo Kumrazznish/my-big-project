@@ -258,6 +258,7 @@ class SupabaseService {
     chapters: any[];
   }): Promise<void> {
     try {
+      console.log('Checking for existing detailed course in database...');
       // Check if course already exists
       const { data: existingCourse, error: fetchError } = await supabase
         .from('detailed_courses')
@@ -266,7 +267,8 @@ class SupabaseService {
         .eq('roadmap_id', courseData.roadmapId)
         .single();
 
-      if (existingCourse && !fetchError) {
+      if (existingCourse) {
+        console.log('Updating existing detailed course in database');
         // Update existing course
         const { error: updateError } = await supabase
           .from('detailed_courses')
@@ -279,7 +281,9 @@ class SupabaseService {
           .eq('id', existingCourse.id);
 
         if (updateError) throw updateError;
+        console.log('Successfully updated existing detailed course');
       } else {
+        console.log('Creating new detailed course in database');
         // Create new course
         const { error: insertError } = await supabase
           .from('detailed_courses')
@@ -293,6 +297,7 @@ class SupabaseService {
           });
 
         if (insertError) throw insertError;
+        console.log('Successfully created new detailed course');
       }
     } catch (error) {
       console.error('Error saving detailed course:', error);
@@ -302,6 +307,7 @@ class SupabaseService {
 
   async getDetailedCourse(userId: string, roadmapId: string): Promise<any | null> {
     try {
+      console.log('Fetching detailed course from database:', { userId, roadmapId });
       const { data: course, error } = await supabase
         .from('detailed_courses')
         .select('*')
@@ -311,8 +317,12 @@ class SupabaseService {
 
       if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "not found"
 
-      if (!course) return null;
+      if (!course) {
+        console.log('No detailed course found in database');
+        return null;
+      }
 
+      console.log('Found detailed course in database');
       return {
         id: course.id,
         roadmapId: course.roadmap_id,
