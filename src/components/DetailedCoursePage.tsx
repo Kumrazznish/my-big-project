@@ -448,6 +448,20 @@ const DetailedCoursePage: React.FC<DetailedCoursePageProps> = ({
         }
       } catch (error) {
         console.error('Failed to update chapter progress:', error);
+        
+        // Update in Supabase if user is logged in
+        if (user) {
+          try {
+            await userService.saveDetailedCourse(user._id, {
+              roadmapId: updatedCourse.roadmapId,
+              title: updatedCourse.title,
+              description: updatedCourse.description,
+              chapters: updatedCourse.chapters
+            });
+          } catch (error) {
+            console.error('Failed to update detailed course in database:', error);
+          }
+        }
       }
     }
   };

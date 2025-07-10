@@ -1,4 +1,4 @@
-import { firebaseService } from './firebaseService';
+import { supabaseService } from './supabaseService';
 import { UserProfile, LearningHistory } from '../types';
 
 class UserService {
@@ -10,10 +10,10 @@ class UserService {
     imageUrl: string;
   }): Promise<UserProfile> {
     try {
-      return await firebaseService.getOrCreateUser(userData);
+      return await supabaseService.getOrCreateUser(userData);
     } catch (error) {
       console.error('Error in userService.getOrCreateUser:', error);
-      // Fallback to localStorage if Firebase fails
+      // Fallback to localStorage if Supabase fails
       const fallbackUser: UserProfile = {
         _id: userData.clerkId,
         clerkId: userData.clerkId,
@@ -32,7 +32,7 @@ class UserService {
 
   async updateUser(userId: string, data: Partial<UserProfile>): Promise<UserProfile> {
     try {
-      return await firebaseService.updateUser(userId, data);
+      return await supabaseService.updateUser(userId, data);
     } catch (error) {
       console.error('Error in userService.updateUser:', error);
       // Fallback to localStorage
@@ -49,7 +49,7 @@ class UserService {
 
   async getUserHistory(userId: string): Promise<LearningHistory[]> {
     try {
-      return await firebaseService.getUserHistory(userId);
+      return await supabaseService.getUserHistory(userId);
     } catch (error) {
       console.error('Error in userService.getUserHistory:', error);
       // Fallback to localStorage
@@ -70,7 +70,7 @@ class UserService {
     };
   }): Promise<LearningHistory> {
     try {
-      return await firebaseService.addToHistory(userId, historyData);
+      return await supabaseService.addToHistory(userId, historyData);
     } catch (error) {
       console.error('Error in userService.addToHistory:', error);
       // Fallback to localStorage
@@ -97,7 +97,7 @@ class UserService {
 
   async updateChapterProgress(userId: string, historyId: string, chapterId: string, completed: boolean): Promise<void> {
     try {
-      await firebaseService.updateChapterProgress(userId, historyId, chapterId, completed);
+      await supabaseService.updateChapterProgress(userId, historyId, chapterId, completed);
     } catch (error) {
       console.error('Error in userService.updateChapterProgress:', error);
       // Fallback to localStorage
@@ -123,6 +123,32 @@ class UserService {
           localStorage.setItem(`history_${userId}`, JSON.stringify(history));
         }
       }
+    }
+  }
+
+  async saveDetailedCourse(userId: string, courseData: {
+    roadmapId: string;
+    title: string;
+    description: string;
+    chapters: any[];
+  }): Promise<void> {
+    try {
+      await supabaseService.saveDetailedCourse(userId, courseData);
+    } catch (error) {
+      console.error('Error in userService.saveDetailedCourse:', error);
+      // Fallback to localStorage
+      localStorage.setItem(`detailed_course_${courseData.roadmapId}`, JSON.stringify(courseData));
+    }
+  }
+
+  async getDetailedCourse(userId: string, roadmapId: string): Promise<any | null> {
+    try {
+      return await supabaseService.getDetailedCourse(userId, roadmapId);
+    } catch (error) {
+      console.error('Error in userService.getDetailedCourse:', error);
+      // Fallback to localStorage
+      const course = localStorage.getItem(`detailed_course_${roadmapId}`);
+      return course ? JSON.parse(course) : null;
     }
   }
 }

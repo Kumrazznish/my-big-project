@@ -88,6 +88,18 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       } catch (error) {
         console.error('Failed to parse saved course:', error);
       }
+    } else if (user) {
+      // Try to load from Supabase if not in localStorage
+      try {
+        const course = await userService.getDetailedCourse(user._id, roadmapId);
+        if (course) {
+          setDetailedCourse(course);
+          // Also save to localStorage for offline access
+          localStorage.setItem(`detailed_course_${roadmapId}`, JSON.stringify(course));
+        }
+      } catch (error) {
+        console.error('Failed to load detailed course from database:', error);
+      }
     }
     
     generateRoadmap();
@@ -308,6 +320,20 @@ const RoadmapView: React.FC<RoadmapViewProps> = ({ subject, difficulty, onBack, 
       
       // Save detailed course to localStorage for persistence
       localStorage.setItem(`detailed_course_${currentRoadmapId}`, JSON.stringify(detailedCourseData));
+      
+      // Save to Supabase if user is logged in
+      if (user) {
+        try {
+          await userService.saveDetailedCourse(user._id, {
+            roadmapId: currentRoadmapId,
+            title: detailedCourseData.title,
+            description: detailedCourseData.description,
+            chapters: detailedCourseData.chapters
+          });
+        } catch (error) {
+          console.error('Failed to save detailed course to database:', error);
+        }
+      }
       
     } catch (error) {
       console.error('Failed to generate detailed course:', error);
