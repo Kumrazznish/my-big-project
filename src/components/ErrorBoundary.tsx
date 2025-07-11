@@ -20,6 +20,7 @@ class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    console.log('Environment variables available:', Object.keys(import.meta.env));
   }
 
   public render() {
@@ -33,11 +34,16 @@ class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Configuration Error
+              Application Error
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              The application is missing required environment variables. Please check the deployment configuration.
+              {this.state.error?.message || 'An unexpected error occurred. Please check the deployment configuration and environment variables.'}
             </p>
+            <div className="text-left bg-gray-100 dark:bg-slate-700 p-4 rounded-lg text-sm font-mono mb-4">
+              <div className="font-bold mb-2">Debug Info:</div>
+              Error: {this.state.error?.name}<br/>
+              Available env vars: {Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')).length}
+            </div>
             <button 
               onClick={() => window.location.reload()}
               className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"

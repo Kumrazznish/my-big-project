@@ -21,6 +21,7 @@ const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!CLERK_PUBLISHABLE_KEY) {
   console.error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable");
+  console.log("Available env vars:", Object.keys(import.meta.env));
 }
 
 function App() {
@@ -38,14 +39,27 @@ function App() {
             Configuration Required
           </h2>
           <p className="text-gray-600 mb-6">
-            Please configure the required environment variables in your Netlify dashboard.
+            Please configure the required environment variables in your deployment dashboard.
           </p>
-          <div className="text-left bg-gray-100 p-4 rounded-lg text-sm font-mono">
+          <div className="text-left bg-gray-100 p-4 rounded-lg text-sm font-mono mb-4">
+            <div className="font-bold mb-2">Required Environment Variables:</div>
             VITE_CLERK_PUBLISHABLE_KEY<br/>
             VITE_SUPABASE_URL<br/>
             VITE_SUPABASE_ANON_KEY<br/>
-            VITE_GEMINI_API_KEY
+            VITE_GEMINI_API_KEY<br/>
+            VITE_GEMINI_API_KEY_2 (optional)
           </div>
+          <div className="text-sm text-gray-600 mb-4">
+            Current status: Missing VITE_CLERK_PUBLISHABLE_KEY
+          </div>
+          <a 
+            href="https://app.netlify.com/sites/gleeful-melba-620907/settings/env-vars" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            Configure Environment Variables
+          </a>
         </div>
       </div>
     );
